@@ -1,0 +1,46 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sellers</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Sellers List</h1>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Phone1</th>
+            <th>Phone2</th>
+            <th>GST Number</th>
+        </tr>
+        {% for seller in sellers_i %}
+        <tr>
+            <td>{{ seller['name'] }}</td>
+            <td>{{ seller['username'] }}</td>
+            <td>{{ seller['email'] }}</td>
+            <td>{{ seller['phone1'] }}</td>
+            <td>{{ seller['phone2'] }}</td>
+            <td>{{ seller['gst_number'] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <div class="pagination">
+    {% if page > 1 %}
+    <a href="{{url_for('sellers',page=page-1) }}">Previous</a>
+    {% endif %}
+
+    {% for i in range(1, total_pages+1) %}
+    <a href="{{url_for('sellers',page=i)}}" class="{{ 'active' if i == page else '' }}">{{ i }}</a>
+    {% endfor %}
+
+    {% if page < total_pages %}
+    <a href="{{url_for('sellers',page=page+1) }}">Next</a>
+    {% endif %}
+    </div>
+    <a href="{{ url_for('index') }}">Back to Home</a>
+</body>
+</html>
