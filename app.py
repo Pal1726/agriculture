@@ -88,8 +88,20 @@ def cart():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    cursor.execute("SELECT COUNT(*) AS total from Cart")  
+    cursor.execute("""SELECT COUNT(*) AS total 
+    FROM (SELECT 
+            Cart.cart_id AS serial_number,
+            Product.product_title AS product_name,
+            Product.product_mrp AS price,
+            Cart.quantity,
+            (Product.product_mrp * Cart.quantity) AS subtotal
+        FROM 
+            Cart
+        JOIN 
+            Product ON Cart.product_id = Product.product_id
+            ) AS cart_details;""")  
     total=cursor.fetchone()['total']
+    print("total",total)
 
     cursor.execute("""
         SELECT 
@@ -120,10 +132,30 @@ def order():
 
     # cursor.execute("SELECT COUNT(*) AS total from Orders")  
     # total=cursor.fetchone()['total']
-    cursor.execute("SELECT COUNT( o.order_id) AS total FROM Orders o")  
+    cursor.execute("""SELECT COUNT(*) AS total
+    FROM (
+        SELECT
+            o.order_id AS serial_no,
+            Buyer.name AS buyer_name,
+            p.product_title,
+            CONCAT(a.street, ', ', a.city, ', ', a.region, ', ', a.pincode, ', ', a.country) AS delivery_address,
+            o.total_amount AS subtotal,
+            pay.payment_method
+    FROM
+        Orders o
+        JOIN Buyer ON o.buyer_id = Buyer.buyer_id
+        JOIN OrderItem oi ON o.order_id = oi.order_id
+        JOIN Product p ON oi.product_id = p.product_id
+        JOIN Address a ON Buyer.address_id = a.address_id
+        JOIN Payment pay ON o.order_id = pay.order_id
+        GROUP BY
+            o.order_id, Buyer.name, p.product_title, delivery_address, o.total_amount, pay.payment_method
+        ORDER BY
+            o.order_id ASC
+    ) AS order_details;""")  
 
     total = cursor.fetchone()['total']
-    print("total",total)
+    # print("total",total)
     
     # SQL query to fetch the necessary details for the order
     cursor.execute("""
@@ -163,8 +195,31 @@ def transaction():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    cursor.execute("SELECT COUNT(*) AS total from Transaction")  
+    cursor.execute("""SELECT COUNT(*) AS total
+    FROM (SELECT 
+            s.name AS seller_name,
+            b.name As buyer_name,
+            b.phone1 AS phone_number, 
+            CONCAT(a.street, ', ', a.city, ', ', a.region, ', ', a.pincode, ', ', a.country) AS delivery_address,
+            p.product_title, 
+            oi.quantity, 
+            oi.total_price AS amount,  
+            pay.payment_method AS payment_mode
+        FROM 
+            Transaction t
+            JOIN Orders o ON t.order_id = o.order_id
+            JOIN Buyer b ON t.buyer_id = b.buyer_id
+            JOIN Seller s ON t.seller_id = s.seller_id
+            JOIN OrderItem oi ON o.order_id = oi.order_id
+            JOIN Product p ON oi.product_id = p.product_id
+            JOIN Address a ON b.address_id = a.address_id
+            JOIN Payment pay ON o.order_id = pay.order_id
+        GROUP BY
+            seller_name,buyer_name,phone_number,delivery_address,p.product_title,oi.quantity,oi.total_price,payment_mode
+        ) AS transaction_details;""")  
+
     total=cursor.fetchone()['total']
+    # print("total",total)
     
     cursor.execute("""
         SELECT 
