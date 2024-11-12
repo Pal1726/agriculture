@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS Product (
     product_image VARCHAR(255),
     product_mrp DECIMAL(10, 2) NOT NULL,
     product_description TEXT,
-    delivery_available BOOLEAN NOT NULL,
+    d,
     seller_id INT,
     FOREIGN KEY (product_category_id) REFERENCES ProductCategory(product_category_id),
     FOREIGN KEY (seller_id) REFERENCES Seller(seller_id)
