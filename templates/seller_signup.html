@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup</title>
+</head>
+<body>
+    <h2>Signup</h2>
+    <form action="{{ url_for('seller_signup') }}" method="POST">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required><br><br>
+
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required><br><br>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required><br><br>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required><br><br>
+
+        <label for="phone1">Phone Number:</label>
+        <input type="text" id="phone1" name="phone1" pattern="\d{10}" maxlength="10" placeholder="10-digit phone number" required><br><br>
+
+        <label for="phone2">Alternate Phone Number:</label>
+        <input type="text" id="phone2" name="phone2" pattern="\d{10}" maxlength="10" placeholder="10-digit phone number"><br><br>
+
+         <label for="GST">GST Number:</label>
+        <input type="text" id="GST" name="GST" ><br><br>
+
+        <input type="submit" value="Signup">
+    </form>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <ul>
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    {% endwith %}
+</body>
+</html>

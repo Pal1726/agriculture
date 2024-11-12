@@ -1,0 +1,94 @@
+/* General body styling */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f4f8; /* Soft light blue background color */
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+/* Container styling */
+form {
+    background-color: #ffffff; /* White background for the form */
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 100%;
+}
+
+/* Form title */
+h1 {
+    text-align: center;
+    color: #0077b6; /* Light blue title color */
+    font-size: 24px;
+    margin-top: 100px;
+
+}
+
+/* Label styling */
+label {
+    display: block;
+    margin-bottom: 5px;
+    color: #555;
+    font-weight: bold;
+}
+
+/* Input, select, and textarea styling */
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="file"],
+textarea,
+select {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 14px;
+}
+
+/* Radio button styling */
+input[type="radio"] {
+    margin-right: 8px;
+}
+
+/* Button styling */
+button {
+    width: 100%;
+    background-color: #0077b6; /* Matching blue color */
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #005f87; /* Darker shade of blue on hover */
+}
+
+/* Placeholder styling */
+input::placeholder, 
+textarea::placeholder {
+    color: green;
+    font-style: italic;
+}
+
+/* Adjust form alignment */
+input[type="radio"] + label {
+    display: inline-block;
+    font-weight: normal;
+    margin-right: 10px;
+}
+
+nav{
+    text-align: right;
+}
