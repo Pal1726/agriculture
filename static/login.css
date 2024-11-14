@@ -1,0 +1,160 @@
+/* Background styling */
+body.login-page {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    height: 100vh;
+    background: url('/static/uploads/login_background.jpg') no-repeat center center fixed ;
+    background-size: cover;
+    background-position: center;
+    
+    margin: 0;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+
+
+/* Login form styling */
+.login-container {
+    background-color: rgba(255, 255, 255, 0.5);
+    padding: 100px;
+    width: 400px;
+    border-radius: 15px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.5);
+    margin-right: 8%;
+    position: relative;
+    overflow: hidden;
+    color: #000000; /* Set default text color to black */
+
+}
+
+/* Highlight effect for the container */
+.login-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 15px;
+    z-index: -1;
+}
+
+/* Login title styling */
+.login-title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 28px;
+    margin-bottom: 25px;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3); /* Add text shadow for better readability */
+}
+
+/* Form input styling */
+.input-wrapper {
+    position: relative;
+    margin: 20px 0;
+}
+
+.input-field {
+    width: 100%;
+    padding: 8px 0;
+    font-size: 18px;
+    border: none;
+    border-bottom: 2px solid #ffffff;
+    background-color: transparent;
+    outline: none;
+    transition: border-color 0.3s;
+    font-weight: bold;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3); /* Add text shadow for better readability */
+}
+
+.input-field:focus {
+    border-bottom-color: #1b5e20;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Highlight effect for input fields */
+.input-wrapper:hover .input-field {
+    border-bottom-color: #2e7d32;
+}
+
+/* Input icon styling */
+.input-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #ffffff;
+    font-size: 20px;
+}
+
+/* Submit button styling */
+.submit-btn {
+    background-color: #2e7d32;
+    color: white;
+    padding: 12px;
+    font-size: 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    transition: background-color 0.3s;
+}
+
+.submit-btn:hover {
+    background-color: #1b5e20;
+}
+
+/* Link styling */
+.signup-link {
+    text-align: center;
+    margin-top: 25px;
+    color: #000000; /* Black text for better contrast */
+    font-size: 16px;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3); /* Add text shadow for better readability */
+}
+
+.signup-link a {
+    color: #1b5e20;
+    text-decoration: none;
+}
+
+.signup-link a:hover {
+    text-decoration: underline;
+}
+
+/* Flash message container */
+.flash-messages {
+    margin-top: 20px;
+    padding: 10px;
+}
+
+/* General flash message styling */
+.flash-message {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Success message (green) */
+.flash-message.success {
+    background-color: #4CAF50; /* Green background for success */
+    color: white;
+}
+
+/* Error message (red) */
+.flash-message.error {
+    background-color: #f44336; /* Red background for error */
+    color: white;
+}
+
+/* Optionally, style for info messages */
+.flash-message.info {
+    background-color: #2196F3; /* Blue background for info */
+    color: white;
+}
