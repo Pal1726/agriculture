@@ -1,0 +1,71 @@
+/* styles.css */
+
+/* Background Image */
+body {
+    background-image: url('/static/uploads/index_background.jpg'); /* Replace with your image URL */
+    background-size: cover;
+    background-position: center;
+    color: white;
+    font-family: Arial, sans-serif;
+    height: 100vh;
+    margin: 0;
+}
+
+/* Centering the content */
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    flex-direction: column;
+    text-align: center;
+}
+
+/* Styling the heading */
+h1 {
+    font-size: 3rem;
+    margin-bottom: 20px;
+}
+
+h2 {
+    font-size: 2rem;
+    margin-bottom: 40px;
+}
+
+/* Container for the role boxes */
+.role-container {
+    display: flex;
+    justify-content: center; /* Align items horizontally */
+    gap: 20px; /* Space between the role boxes */
+}
+
+/* Styling the role boxes */
+.role-box {
+    background-color: rgba(255, 255, 255, 0.7); /* semi-transparent white */
+    padding: 30px;
+    border-radius: 10px;
+    width: 200px;
+    text-align: center;
+    font-size: 1.5rem;
+    transition: transform 0.3s ease;
+    text-decoration: none; 
+}
+
+/* Hover effect for role boxes */
+.role-box:hover {
+    transform: scale(1.1);
+    cursor: pointer;
+}
+
+/* Style for links inside the role boxes */
+.role-box span {
+    display: block;
+    color: black;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+/* Hover effect for role box text */
+.role-box:hover span {
+    color: #007bff; /* Change color of the text on hover */
+}

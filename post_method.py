@@ -75,10 +75,10 @@ def buyer_login():
             session['user_id'] = user['buyer_id']  # Use the actual user ID column name
             session['role'] = 'buyer'
             # print(session)
-            flash("Login successful!")
+            flash("Login successful!","success")
             return redirect(url_for('buyer_dashboard'))
         else:
-            flash("Invalid credentials!")
+            flash("Invalid credentials!","error")
             return redirect(url_for('buyer_login'))
     
     return render_template('buyer_login.html')
@@ -99,13 +99,14 @@ def seller_login():
         if user and check_password_hash(user['password'], password):
             session['user_id'] = user['seller_id']  # Use the actual user ID column name
             session['role'] = 'seller'
-            flash("Login successful!")
+            flash("Login successful!", "success")  # Flash success message
             return redirect(url_for('add_product'))
         else:
-            flash("Invalid credentials!")
+            flash("Invalid credentials!", "error")  # Flash error message
             return redirect(url_for('seller_login'))
     
     return render_template('seller_login.html')
+
 
 @app.route('/buyer_signup', methods=['GET', 'POST'])
 def buyer_signup():
@@ -131,11 +132,11 @@ def buyer_signup():
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (name, username, email, hashed_password, phone1, phone2))
             connection.commit()
-            flash("Signup successful! You can now log in.")
+            flash("Signup successful! You can now log in.","success")
             return redirect(url_for('buyer_login'))
 
         except mysql.connector.IntegrityError:
-            flash("Username or email already exists. Please try again.")
+            flash("Username or email already exists. Please try again.","error")
             return redirect(url_for('buyer_signup'))
 
         finally:
@@ -169,11 +170,11 @@ def seller_signup():
                 VALUES (%s, %s, %s, %s, %s, %s,%s)
             """, (name, username, email, hashed_password, phone1, phone2,gst))
             connection.commit()
-            flash("Signup successful! You can now log in.")
+            flash("Signup successful! You can now log in.","success")
             return redirect(url_for('seller_login'))
 
         except mysql.connector.IntegrityError:
-            flash("Username or email already exists. Please try again.")
+            flash("Username or email already exists. Please try again.","error")
             return redirect(url_for('seller_signup'))
 
         finally:

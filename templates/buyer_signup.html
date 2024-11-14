@@ -4,38 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buyer Signup</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body>
-    <h2>Buyer Signup</h2>
-    <form action="{{ url_for('buyer_signup') }}" method="POST">
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" required><br><br>
+<body class="login-page">
+    <div class="login-container">
+        <h2 class="login-title">Buyer Signup</h2>
+        <form action="{{ url_for('buyer_signup') }}" method="POST">
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-user"></i></span>
+                <input type="text" id="name" name="name" class="input-field" placeholder="Name" required>
+            </div>
 
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required><br><br>
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-user"></i></span>
+                <input type="text" id="username" name="username" class="input-field" placeholder="Username" required>
+            </div>
 
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required><br><br>
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-envelope"></i></span>
+                <input type="email" id="email" name="email" class="input-field" placeholder="Email" required>
+            </div>
 
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required><br><br>
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-lock"></i></span>
+                <input type="password" id="password" name="password" class="input-field" placeholder="Password" required>
+            </div>
 
-        <label for="phone1">Phone Number:</label>
-        <input type="text" id="phone1" name="phone1" pattern="\d{10}" maxlength="10" placeholder="10-digit phone number" required><br><br>
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-phone"></i></span>
+                <input type="text" id="phone1" name="phone1" class="input-field" pattern="\d{10}" maxlength="10" placeholder="10-digit phone number" required
+                oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
+            </div>
 
-        <label for="phone2">Alternate Phone Number:</label>
-        <input type="text" id="phone2" name="phone2" pattern="\d{10}" maxlength="10" placeholder="10-digit phone number" ><br><br>
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-phone"></i></span>
+                <input type="text" id="phone2" name="phone2" class="input-field" pattern="\d{15}" maxlength="15" placeholder="Alternate phone number"
+                oninput="this.value = this.value.replace(/\D/g, '').slice(0, 10)">
+            </div>
 
-        <input type="submit" value="Signup">
-    </form>
-    {% with messages = get_flashed_messages() %}
-    {% if messages %}
-        <ul>
-            {% for message in messages %}
-                <li>{{ message }}</li>
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-clipboard"></i></span>
+                <input type="text" id="GST" name="GST" class="input-field" placeholder="GST Number">
+            </div>
+
+            <input type="submit" value="Signup" class="submit-btn">
+        </form>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}">{{ message }}</div>
             {% endfor %}
-        </ul>
-    {% endif %}
-    {% endwith %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+
+        <p class="signup-link">Already have an account? <a href="{{ url_for('buyer_login') }}">Login</a></p>
+    </div>
 </body>
 </html>
