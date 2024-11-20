@@ -38,6 +38,14 @@ def role_required(role):
         return decorated_function
     return decorator
 
+@app.after_request
+def add_header(response):
+    # Disable caching of all responses
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'  # Use '0' for better compatibility than '-1'
+    return response
+
 
 @app.route('/')
 def index():
@@ -47,7 +55,7 @@ def index():
             return redirect(url_for('buyer_dashboard'))  # Redirect to buyer's dashboard if logged in as buyer
         elif session['role'] == 'seller':
             return redirect(url_for('add_product'))  # Redirect to seller's add product page if logged in as seller
-    return render_template('buyerorseller.html')  # Show role selection page if not logged in
+    return render_template('sellerindex.html')  # Show role selection page if not logged in
 
 @app.route('/role_selection', methods=['POST'])
 def role_selection():
@@ -59,6 +67,8 @@ def role_selection():
 
 @app.route('/buyer_login', methods=['GET', 'POST'])
 def buyer_login():
+    if 'user_id' in session and session.get('role') == 'buyer':
+        return redirect(url_for('buyer_dashboard'))
     
     if request.method == 'POST':
         username = request.form['username']
@@ -85,6 +95,8 @@ def buyer_login():
 
 @app.route('/seller_login', methods=['GET', 'POST'])
 def seller_login():
+    if 'user_id' in session and session.get('role') == 'seller':
+        return redirect(url_for('add_product'))
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
