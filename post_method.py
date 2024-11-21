@@ -55,16 +55,22 @@ def index():
             return redirect(url_for('buyer_dashboard'))  # Redirect to buyer's dashboard if logged in as buyer
         elif session['role'] == 'seller':
             return redirect(url_for('add_product'))  # Redirect to seller's add product page if logged in as seller
-    return render_template('sellerindex.html')  # Show role selection page if not logged in
+    return render_template('home.html')  # Show role selection page if not logged in
 
-@app.route('/role_selection', methods=['POST'])
-def role_selection():
-    role = request.form['role']
-    if role == 'buyer':
-        return redirect(url_for('buyer_login'))
-    elif role == 'seller':
-        return redirect(url_for('seller_login'))
+# @app.route('/role_selection', methods=['POST'])
+# def role_selection():
+#     role = request.form['role']
+#     if role == 'buyer':
+#         return redirect(url_for('buyer_login'))
+#     elif role == 'seller':
+#         return redirect(url_for('seller_login'))
+@app.route('/about')
+def about():
+    return render_template('about.html') 
 
+@app.route('/services')
+def services():
+    return render_template('services.html') 
 @app.route('/buyer_login', methods=['GET', 'POST'])
 def buyer_login():
     if 'user_id' in session and session.get('role') == 'buyer':
