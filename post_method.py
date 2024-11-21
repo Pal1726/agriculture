@@ -64,13 +64,12 @@ def index():
 #         return redirect(url_for('buyer_login'))
 #     elif role == 'seller':
 #         return redirect(url_for('seller_login'))
-@app.route('/about')
-def about():
-    return render_template('about.html') 
+
 
 @app.route('/services')
 def services():
     return render_template('services.html') 
+    
 @app.route('/buyer_login', methods=['GET', 'POST'])
 def buyer_login():
     if 'user_id' in session and session.get('role') == 'buyer':
