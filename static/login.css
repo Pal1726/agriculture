@@ -4,7 +4,7 @@ body.login-page {
     justify-content: flex-end;
     align-items: center;
     height: 100vh;
-    background: url('/static/uploads/login_background.jpg') no-repeat center center fixed ;
+    background: url('/static/uploads/page-title-bg.webp') no-repeat center center fixed ;
     background-size: cover;
     background-position: center;
     
