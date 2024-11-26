@@ -48,14 +48,14 @@ def add_header(response):
 
 
 @app.route('/')
-def index():
+def home():
     # Check if the user is already logged in
     if 'user_id' in session and 'role' in session:
         if session['role'] == 'buyer':
             return redirect(url_for('buyer_dashboard'))  # Redirect to buyer's dashboard if logged in as buyer
         elif session['role'] == 'seller':
-            return redirect(url_for('add_product'))  # Redirect to seller's add product page if logged in as seller
-    return render_template('home.html')  # Show role selection page if not logged in
+            return redirect(url_for('my_products'))  # Redirect to seller's add product page if logged in as seller
+    return render_template('index.html')  # Show role selection page if not logged in
 
 # @app.route('/role_selection', methods=['POST'])
 # def role_selection():
@@ -65,6 +65,23 @@ def index():
 #     elif role == 'seller':
 #         return redirect(url_for('seller_login'))
 
+@app.route('/my_products')
+@login_required
+@role_required('seller')
+def my_products():
+    return render_template('my_products.html')
+
+@app.route('/product_details')
+@login_required
+@role_required('seller')
+def product_details():
+    return render_template('product_details.html')
+
+
+@app.route('/index')
+
+def index():
+    return render_template('index.html')
 
 @app.route('/services')
 def services():
@@ -117,7 +134,7 @@ def seller_login():
             session['user_id'] = user['seller_id']  # Use the actual user ID column name
             session['role'] = 'seller'
             flash("Login successful!", "success")  # Flash success message
-            return redirect(url_for('add_product'))
+            return redirect(url_for('my_products'))
         else:
             flash("Invalid credentials!", "error")  # Flash error message
             return redirect(url_for('seller_login'))
@@ -234,7 +251,7 @@ def add_product():
         connection.close()
         
         flash("Product added successfully!")
-        return redirect(url_for('add_product'))
+        return redirect(url_for('my_products'))
 
     
     connection = get_db_connection()
