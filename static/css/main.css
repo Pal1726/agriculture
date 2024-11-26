@@ -2268,3 +2268,49 @@ section,
   color: color-mix(in srgb, var(--default-color), transparent 60%);
   font-size: 14px;
 }
+
+.product-card {
+  border: 1px solid #e0e0e0; /* Add a light border */
+  border-radius: 8px; /* Rounded corners */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  overflow: hidden; /* Ensure image fits within the card */
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.post-img {
+  height: 200px; /* Set a fixed height */
+  width: 100%; /* Full width */
+  display: flex; /* Center the image */
+  justify-content: center;
+  align-items: center;
+  overflow: hidden; /* Hide overflowing content */
+}
+
+.product-image {
+  margin-top: 10px;
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: cover; /* Ensure images maintain aspect ratio */
+}
+
+.product-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.product-price {
+  color: #888;
+  font-size: 1rem;
+  margin: 5px 0;
+  font-weight: 500;
+}
+
+.container {
+  padding: 20px;
+}
