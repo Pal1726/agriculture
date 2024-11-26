@@ -2269,48 +2269,50 @@ section,
   font-size: 14px;
 }
 
+.post-img {
+  height: 200px; /* Fixed height for consistent card sizes */
+  width: 100%; /* Full width of the container */
+  display: flex; /* Enable flexible box for alignment */
+  justify-content: center; /* Horizontally center the content */
+  align-items: center; /* Vertically center the content */
+  overflow: hidden; /* Hide any overflowing parts of the image */
+  background-color: #f5f5f5; /* Optional: light background for consistency */
+}
+
+.post-img img {
+  display: block; /* Ensures the image behaves as a block element */
+  max-width: 100%; /* Prevents the image from exceeding the container’s width */
+  height: 100%; /* Fills the height of the container */
+  object-fit: cover; /* Maintains aspect ratio while cropping excess parts */
+  object-position: center; /* Centers the cropped image */
+}
+
 .product-card {
-  border: 1px solid #e0e0e0; /* Add a light border */
+  border: 1px solid #e0e0e0; /* Light border for card */
   border-radius: 8px; /* Rounded corners */
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow */
-  overflow: hidden; /* Ensure image fits within the card */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow effect */
+  overflow: hidden; /* Ensures contents stay within the card */
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .product-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
-}
-
-.post-img {
-  height: 200px; /* Set a fixed height */
-  width: 100%; /* Full width */
-  display: flex; /* Center the image */
-  justify-content: center;
-  align-items: center;
-  overflow: hidden; /* Hide overflowing content */
-}
-
-.product-image {
-  margin-top: 10px;
-  max-height: 100%;
-  max-width: 100%;
-  object-fit: cover; /* Ensure images maintain aspect ratio */
+  transform: translateY(-5px); /* Slight hover lift */
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); /* Enhanced shadow on hover */
 }
 
 .product-title {
-  font-size: 1.2rem;
+  font-size: 1.2rem; /* Slightly larger font size */
   font-weight: bold;
   margin-top: 10px;
 }
 
 .product-price {
-  color: #888;
+  color: #888; /* Light gray color for the price */
   font-size: 1rem;
   margin: 5px 0;
   font-weight: 500;
 }
 
 .container {
-  padding: 20px;
+  padding: 20px; /* Add space around the container */
 }
