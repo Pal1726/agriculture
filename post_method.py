@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash,sess
 import mysql.connector
 import os
 from werkzeug.security import check_password_hash, generate_password_hash
-
+from math import ceil
 from functools import wraps
 
 app = Flask(__name__)
@@ -65,11 +65,49 @@ def home():
 #     elif role == 'seller':
 #         return redirect(url_for('seller_login'))
 
+
 @app.route('/my_products')
 @login_required
 @role_required('seller')
 def my_products():
-    return render_template('my_products.html')
+    # Get current page number, default is 1
+    page = request.args.get('page', 1, type=int)
+    per_page = 6  # Number of products per page
+    offset = (page - 1) * per_page
+
+    # Connect to the database
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    # Query to get the total count of products for the seller
+    count_query = """
+        SELECT COUNT(*) 
+        FROM Product
+        WHERE seller_id = %s
+    """
+    seller_id = session.get('user_id')  # Logged-in seller's ID
+    cursor.execute(count_query, (seller_id,))
+    total_products = cursor.fetchone()[0]  # Total number of products
+    total_pages = ceil(total_products / per_page)  # Total number of pages
+
+    # Query to get the products for the current page
+    product_query = """
+        SELECT product_id, product_title, product_mrp, product_image 
+        FROM Product
+        WHERE seller_id = %s
+        LIMIT %s OFFSET %s
+    """
+    cursor.execute(product_query, (seller_id, per_page, offset))
+    products = cursor.fetchall()
+
+    # Close the database connection
+    cursor.close()
+    connection.close()
+
+    # Render the template with products and pagination details
+    return render_template('my_products.html',products=products,current_page=page, total_pages=total_pages )
+
+
 
 @app.route('/product_details')
 @login_required
@@ -238,14 +276,14 @@ def add_product():
         image_filename = image.filename
         if image:
             image.save(os.path.join('static/uploads', image_filename))
-
+        seller_id = session.get('user_id') 
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("""
             INSERT INTO Product 
-            (product_title, product_stock, product_category_id, product_expiry, product_image, product_mrp, product_description, delivery_available) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (title, stock, category_id, expiry, image_filename, mrp, description, delivery))
+            (product_title, product_stock, product_category_id, product_expiry, product_image, product_mrp, product_description, delivery_available,seller_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (title, stock, category_id, expiry, image_filename, mrp, description, delivery,seller_id))
         connection.commit()
         cursor.close()
         connection.close()
@@ -279,4 +317,4 @@ def buyer_dashboard():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True) 
