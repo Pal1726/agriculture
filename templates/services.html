@@ -52,19 +52,52 @@
 
       <nav id="navmenu" class="navmenu">
         <ul>
-          <li><a href="{{ url_for('index') }}">Home</a></li>
-          
-          <li><a href="{{ url_for('services') }}" class="active">Our Services</a></li>
-          <li><a href="{{ url_for('buyer_login') }}">Login</a></li>
-          <li>
+       {% if 'user_id' in session and 'role' in session %}
+        {% if session['role'] == 'seller' %}
+        
+        <li><a href="{{ url_for('index') }}" >Home</a></li>
+        
+        <li><a href="{{ url_for('services') }}" class="active">Our Services</a></li>
+         <li><a href="{{ url_for('my_products') }}" >My Products</a></li>
+          <li class="dropdown"><a href="#"><span>Dropdown</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+            <ul>
+              <li><a href="#">Dropdown 1</a></li>
+              <li class="dropdown"><a href="#"><span>Deep Dropdown</span> <i class="bi bi-chevron-down toggle-dropdown"></i></a>
+                <ul>
+                  <li><a href="#">Deep Dropdown 1</a></li>
+                  <li><a href="#">Deep Dropdown 2</a></li>
+                  <li><a href="#">Deep Dropdown 3</a></li>
+                  <li><a href="#">Deep Dropdown 4</a></li>
+                  <li><a href="#">Deep Dropdown 5</a></li>
+                </ul>
+              </li>
+              <li><a href="#">Dropdown 2</a></li>
+              <li><a href="#">Dropdown 3</a></li>
+              <li><a href="#">Dropdown 4</a></li>
+            </ul>
+          </li>
+          <li><a href="{{ url_for('logout') }}">Logout</a></li>
+        </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+
+          {% endif %}
+        {% else %}
+
+
+        <li><a href="{{ url_for('index') }}" >Home</a></li>
+        
+        <li><a href="{{ url_for('services') }}" class="active">Our Services</a></li>
+        <li><a href="{{ url_for('buyer_login') }}">Buyer Login</a></li>
+        <li>
           <a href="{{ url_for('seller_login') }}">
             <i class="fas fa-user-plus "></i>Want to become a Seller
           </a>
-          </li>
-
-   
+        </li>
+        {% endif %}
+    </ul>
         <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
       </nav>
+
 
     </div>
   </header>
@@ -82,7 +115,7 @@
           Services</p>
         <nav class="breadcrumbs">
           <ol>
-            <li><a href="index.html">Home</a></li>
+            <li><a href="{{ url_for('index') }}">Home</a></li>
             <li class="current">Services</li>
           </ol>
         </nav>
