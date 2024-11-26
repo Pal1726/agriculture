@@ -85,10 +85,10 @@ def my_products():
         FROM Product
         WHERE seller_id = %s
     """
-    seller_id = session.get('user_id')  # Logged-in seller's ID
+    seller_id = session.get('user_id')  
     cursor.execute(count_query, (seller_id,))
-    total_products = cursor.fetchone()[0]  # Total number of products
-    total_pages = ceil(total_products / per_page)  # Total number of pages
+    total_products = cursor.fetchone()[0]  
+    total_pages = ceil(total_products / per_page)  
 
     # Query to get the products for the current page
     product_query = """
@@ -142,7 +142,7 @@ def buyer_login():
         connection.close()
 
         if user and check_password_hash(user['password'], password):
-            session['user_id'] = user['buyer_id']  # Use the actual user ID column name
+            session['user_id'] = user['buyer_id']  
             session['role'] = 'buyer'
             # print(session)
             flash("Login successful!","success")
@@ -169,12 +169,12 @@ def seller_login():
         connection.close()
 
         if user and check_password_hash(user['password'], password):
-            session['user_id'] = user['seller_id']  # Use the actual user ID column name
+            session['user_id'] = user['seller_id'] 
             session['role'] = 'seller'
-            flash("Login successful!", "success")  # Flash success message
+            flash("Login successful!", "success")  
             return redirect(url_for('my_products'))
         else:
-            flash("Invalid credentials!", "error")  # Flash error message
+            flash("Invalid credentials!", "error")  
             return redirect(url_for('seller_login'))
     
     return render_template('seller_login.html')
