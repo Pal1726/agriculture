@@ -52,10 +52,10 @@ def home():
     # Check if the user is already logged in
     if 'user_id' in session and 'role' in session:
         if session['role'] == 'buyer':
-            return redirect(url_for('buyer_dashboard'))  # Redirect to buyer's dashboard if logged in as buyer
+            return redirect(url_for('buyer_dashboard'))  
         elif session['role'] == 'seller':
-            return redirect(url_for('my_products'))  # Redirect to seller's add product page if logged in as seller
-    return render_template('index.html')  # Show role selection page if not logged in
+            return redirect(url_for('my_products'))  
+    return render_template('index.html') 
 
 # @app.route('/role_selection', methods=['POST'])
 # def role_selection():
@@ -72,7 +72,7 @@ def home():
 def my_products():
     # Get current page number, default is 1
     page = request.args.get('page', 1, type=int)
-    per_page = 6  # Number of products per page
+    per_page = 6  
     offset = (page - 1) * per_page
 
     # Connect to the database
@@ -100,19 +100,20 @@ def my_products():
     cursor.execute(product_query, (seller_id, per_page, offset))
     products = cursor.fetchall()
 
-    # Close the database connection
+    
     cursor.close()
     connection.close()
 
-    # Render the template with products and pagination details
+    
     return render_template('my_products.html',products=products,current_page=page, total_pages=total_pages )
 
 
 
-@app.route('/product_details')
+@app.route('/product_details/<int:product_id>')
 @login_required
 @role_required('seller')
-def product_details():
+def product_details(product_id):
+    print(product_id)
     return render_template('product_details.html')
 
 
@@ -215,7 +216,7 @@ def buyer_signup():
             cursor.close()
             connection.close()
 
-    # Render the signup form if the request is GET
+   
     return render_template('buyer_signup.html')
 
 @app.route('/seller_signup', methods=['GET', 'POST'])
@@ -253,7 +254,7 @@ def seller_signup():
             cursor.close()
             connection.close()
 
-    # Render the signup form if the request is GET
+    
     return render_template('seller_signup.html')
 
 @app.route('/add_product', methods=['GET', 'POST'])
