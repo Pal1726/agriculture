@@ -2317,3 +2317,18 @@ section,
   padding: 20px; /* Add space around the container */
 }
 
+.product-image {
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+.product-info .card {
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+.text-warning {
+    color: #ffcc00 !important;
+}
+.text-success {
+    color: #28a745 !important;
+}

@@ -66,100 +66,6 @@ def home():
 #         return redirect(url_for('seller_login'))
 
 
-@app.route('/my_products')
-@login_required
-@role_required('seller')
-def my_products():
-    # Get current page number, default is 1
-    page = request.args.get('page', 1, type=int)
-    per_page = 6  
-    offset = (page - 1) * per_page
-
-    # Connect to the database
-    connection = get_db_connection()
-    cursor = connection.cursor()
-
-    # Query to get the total count of products for the seller
-    count_query = """
-        SELECT COUNT(*) 
-        FROM Product
-        WHERE seller_id = %s
-    """
-    seller_id = session.get('user_id')  
-    cursor.execute(count_query, (seller_id,))
-    total_products = cursor.fetchone()[0]  
-    total_pages = ceil(total_products / per_page)  
-
-    # Query to get the products for the current page
-    product_query = """
-        SELECT product_id, product_title, product_mrp, product_image 
-        FROM Product
-        WHERE seller_id = %s
-        LIMIT %s OFFSET %s
-    """
-    cursor.execute(product_query, (seller_id, per_page, offset))
-    products = cursor.fetchall()
-
-    
-    cursor.close()
-    connection.close()
-
-    
-    return render_template('my_products.html',products=products,current_page=page, total_pages=total_pages )
-
-
-
-@app.route('/product_details/<int:product_id>')
-@login_required
-@role_required('seller')
-def product_details(product_id):
-    connection = get_db_connection()
-    cursor = connection.cursor()
-
-    product_query = """
-        SELECT product_id, product_title, product_mrp, product_image, 
-               product_description, product_stock, 
-               delivery_available
-        FROM Product
-        WHERE product_id = %s AND seller_id = %s
-    """
-    seller_id = session.get('user_id')  # Ensure the product belongs to the logged-in seller
-    cursor.execute(product_query, (product_id, seller_id))
-    product = cursor.fetchone()
-
-    cursor.close()
-    connection.close()
-    if not product:
-        flash("Product not found or you don't have permission to view this product.", "danger")
-        return redirect(url_for('my_products'))
-    return render_template('product_details.html', product=product)
-
-@app.route('/delete_product/<int:product_id>', methods=['POST'])
-@login_required
-@role_required('seller')
-def delete_product(product_id):
-    # Connect to the database
-    connection = get_db_connection()
-    cursor = connection.cursor()
-
-    try:
-       
-        delete_query = "DELETE FROM Product WHERE product_id = %s AND seller_id = %s"
-        seller_id = session.get('user_id')  
-        cursor.execute(delete_query, (product_id, seller_id))
-        
-        connection.commit()
-        flash("Product deleted successfully!", "success")
-    except Exception as e:
-        connection.rollback()
-        flash("An error occurred while deleting the product.", "danger")
-        print(f"Error: {e}")
-    finally:
-        cursor.close()
-        connection.close()
-
-    return redirect(url_for('my_products'))
-
 
 
 @app.route('/index')
@@ -346,6 +252,174 @@ def add_product():
     connection.close()
 
     return render_template('add_product.html', categories=categories)
+
+@app.route('/my_products')
+@login_required
+@role_required('seller')
+def my_products():
+    # Get current page number, default is 1
+    page = request.args.get('page', 1, type=int)
+    per_page = 6  
+    offset = (page - 1) * per_page
+
+    # Connect to the database
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    # Query to get the total count of products for the seller
+    count_query = """
+        SELECT COUNT(*) 
+        FROM Product
+        WHERE seller_id = %s
+    """
+    seller_id = session.get('user_id')  
+    cursor.execute(count_query, (seller_id,))
+    total_products = cursor.fetchone()[0]  
+    total_pages = ceil(total_products / per_page)  
+
+    # Query to get the products for the current page
+    product_query = """
+        SELECT product_id, product_title, product_mrp, product_image 
+        FROM Product
+        WHERE seller_id = %s
+        LIMIT %s OFFSET %s
+    """
+    cursor.execute(product_query, (seller_id, per_page, offset))
+    products = cursor.fetchall()
+
+    
+    cursor.close()
+    connection.close()
+
+    
+    return render_template('my_products.html',products=products,current_page=page, total_pages=total_pages )
+
+
+
+@app.route('/product_details/<int:product_id>')
+@login_required
+@role_required('seller')
+def product_details(product_id):
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    product_query = """
+        SELECT product_id, product_title, product_mrp, product_image, 
+               product_description, product_stock, 
+               delivery_available
+        FROM Product
+        WHERE product_id = %s AND seller_id = %s
+    """
+    seller_id = session.get('user_id')  # Ensure the product belongs to the logged-in seller
+    cursor.execute(product_query, (product_id, seller_id))
+    product = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+    if not product:
+        flash("Product not found or you don't have permission to view this product.", "danger")
+        return redirect(url_for('my_products'))
+    return render_template('product_details.html', product=product)
+
+@app.route('/edit_product/<int:product_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('seller')
+def edit_product(product_id):
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    if request.method == 'POST':
+        # Fetch updated details from the form
+        title = request.form['title']
+        stock = request.form['stock']
+        category_id = request.form['category']
+        expiry = request.form.get('expiry')
+        mrp = request.form['mrp']
+        description = request.form.get('description')
+        delivery = request.form['delivery']
+        
+        # Handle image upload if provided
+        image = request.files['image']
+        seller_id = session.get('user_id')  # Ensure the seller is updating their own product
+        
+        if image and image.filename != '':
+            image_filename = image.filename
+            image.save(os.path.join('static/uploads', image_filename))
+            # Update with a new image
+            cursor.execute("""
+                UPDATE Product
+                SET product_title = %s, product_stock = %s, product_category_id = %s,
+                    product_expiry = %s, product_image = %s, product_mrp = %s,
+                    product_description = %s, delivery_available = %s
+                WHERE product_id = %s AND seller_id = %s
+            """, (title, stock, category_id, expiry, image_filename, mrp, description, delivery, product_id, seller_id))
+        else:
+            # Update without changing the image
+            cursor.execute("""
+                UPDATE Product
+                SET product_title = %s, product_stock = %s, product_category_id = %s,
+                    product_expiry = %s, product_mrp = %s, product_description = %s,
+                    delivery_available = %s
+                WHERE product_id = %s AND seller_id = %s
+            """, (title, stock, category_id, expiry, mrp, description, delivery, product_id, seller_id))
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        flash("Product updated successfully!")
+        return redirect(url_for('my_products'))
+
+    else:
+        # Fetch the product details for pre-filling the form
+        seller_id = session.get('user_id')
+        cursor.execute("""
+            SELECT * FROM Product WHERE product_id = %s AND seller_id = %s
+        """, (product_id, seller_id))
+        product = cursor.fetchone()
+
+        if not product:
+            flash("Unauthorized access or product not found.", "danger")
+            return redirect(url_for('my_products'))
+
+        # Fetch the categories to populate the dropdown
+        cursor.execute("SELECT * FROM ProductCategory")
+        categories = cursor.fetchall()
+
+        cursor.close()
+        connection.close()
+        
+        # Render the edit form with pre-filled product details
+        return render_template('edit_product.html', product=product, categories=categories)
+
+
+@app.route('/delete_product/<int:product_id>', methods=['POST'])
+@login_required
+@role_required('seller')
+def delete_product(product_id):
+    # Connect to the database
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    try:
+       
+        delete_query = "DELETE FROM Product WHERE product_id = %s AND seller_id = %s"
+        seller_id = session.get('user_id')  
+        cursor.execute(delete_query, (product_id, seller_id))
+        
+        connection.commit()
+        flash("Product deleted successfully!", "success")
+    except Exception as e:
+        connection.rollback()
+        flash("An error occurred while deleting the product.", "danger")
+        print(f"Error: {e}")
+    finally:
+        cursor.close()
+        connection.close()
+
+    return redirect(url_for('my_products'))
+
+
 
 @app.route('/logout')
 @login_required
