@@ -52,34 +52,26 @@
       </a>
 
       <nav id="navmenu" class="navmenu">
-    <ul>
-       {% if 'user_id' in session and 'role' in session %}
-        {% if session['role'] == 'seller' %}
-
-        <li><a href="{{ url_for('index') }}" class="active">Home</a></li>
-        
-        <li><a href="{{ url_for('services') }}">Our Services</a></li>
-         <li><a href="{{ url_for('my_products') }}" >My Products</a></li>
-          
-          <li><a href="{{ url_for('logout') }}">Logout</a></li>
-        </ul>
-        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
-
+        <ul>
+          {% if 'user_id' in session and 'role' in session %}
+            {% if session['role'] == 'seller' %}
+                <li><a href="{{ url_for('index') }}" class="active">Home</a></li>
+                <li><a href="{{ url_for('services') }}">Our Services</a></li>
+                <li><a href="{{ url_for('my_products') }}">My Products</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            {% elif session['role'] == 'buyer' %}
+                <li><a href="{{ url_for('index') }}" class="active">Home</a></li>
+                <li><a href="{{ url_for('services') }}">Our Services</a></li>
+                <li><a href="{{ url_for('buyer_dashboard') }}">Buyer Dashboard</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            {% endif %}
+          {% else %}
+              <li><a href="{{ url_for('index') }}" class="active">Home</a></li>
+              <li><a href="{{ url_for('services') }}">Our Services</a></li>
+              <li><a href="{{ url_for('buyer_login') }}">Buyer Login</a></li>
+              <li><a href="{{ url_for('seller_login') }}">Become a Seller</a></li>
           {% endif %}
-        {% else %}
-
-
-        <li><a href="{{ url_for('index') }}" class="active">Home</a></li>
-        
-        <li><a href="{{ url_for('services') }}">Our Services</a></li>
-        <li><a href="{{ url_for('buyer_login') }}">Buyer Login</a></li>
-        <li>
-          <a href="{{ url_for('seller_login') }}">
-            <i class="fas fa-user-plus "></i>Want to become a Seller
-          </a>
-        </li>
-        {% endif %}
-    </ul>
+        </ul>
         <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
       </nav>
 
