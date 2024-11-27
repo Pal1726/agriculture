@@ -101,7 +101,7 @@
                     <img src="{{ url_for('static', filename='uploads/' + product[3]) }}" class="img-fluid" alt="{{ product[1] }}">
                     
                   </div>
-                  <div class="post-content text-center">
+                  <div class="post-content text-center" style="text-transform: capitalize;">
                      <h3><a href="{{ url_for('product_details', product_id=product[0]) }}">{{ product[1] }}</a></h3>
                     <p>Price: ₹ {{ product[2] }}</p>
                   </div>
