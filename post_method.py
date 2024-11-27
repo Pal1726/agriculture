@@ -113,8 +113,53 @@ def my_products():
 @login_required
 @role_required('seller')
 def product_details(product_id):
-    print(product_id)
-    return render_template('product_details.html')
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    product_query = """
+        SELECT product_id, product_title, product_mrp, product_image, 
+               product_description, product_stock, 
+               delivery_available
+        FROM Product
+        WHERE product_id = %s AND seller_id = %s
+    """
+    seller_id = session.get('user_id')  # Ensure the product belongs to the logged-in seller
+    cursor.execute(product_query, (product_id, seller_id))
+    product = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+    if not product:
+        flash("Product not found or you don't have permission to view this product.", "danger")
+        return redirect(url_for('my_products'))
+    return render_template('product_details.html', product=product)
+
+@app.route('/delete_product/<int:product_id>', methods=['POST'])
+@login_required
+@role_required('seller')
+def delete_product(product_id):
+    # Connect to the database
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    try:
+       
+        delete_query = "DELETE FROM Product WHERE product_id = %s AND seller_id = %s"
+        seller_id = session.get('user_id')  
+        cursor.execute(delete_query, (product_id, seller_id))
+        
+        connection.commit()
+        flash("Product deleted successfully!", "success")
+    except Exception as e:
+        connection.rollback()
+        flash("An error occurred while deleting the product.", "danger")
+        print(f"Error: {e}")
+    finally:
+        cursor.close()
+        connection.close()
+
+    return redirect(url_for('my_products'))
+
 
 
 @app.route('/index')
