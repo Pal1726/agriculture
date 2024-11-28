@@ -47,6 +47,31 @@
                 <span class="input-icon"><i class="fas fa-clipboard"></i></span>
                 <input type="text" id="GST" name="GST" class="input-field" placeholder="GST Number">
             </div>
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-map-marker-alt"></i></span>
+                <input type="text" id="street" name="street" class="input-field" placeholder="Street" required>
+            </div>
+        
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-city"></i></span>
+                <input type="text" id="city" name="city" class="input-field" placeholder="City" required>
+            </div>
+        
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-map"></i></span>
+                <input type="text" id="region" name="region" class="input-field" placeholder="Region">
+            </div>
+        
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-mail-bulk"></i></span>
+                <input type="text" id="pincode" name="pincode" class="input-field" placeholder="Pincode" pattern="\d{6}" maxlength="6" required
+                oninput="this.value = this.value.replace(/\D/g, '').slice(0, 6)">
+            </div>
+        
+            <div class="input-wrapper">
+                <span class="input-icon"><i class="fas fa-globe"></i></span>
+                <input type="text" id="country" name="country" class="input-field" placeholder="Country" required>
+            </div>
 
             <input type="submit" value="Signup" class="submit-btn">
         </form>
