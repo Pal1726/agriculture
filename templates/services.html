@@ -61,7 +61,7 @@
             {% elif session['role'] == 'buyer' %}
                 <li><a href="{{ url_for('index') }}" class="active">Home</a></li>
                 <li><a href="{{ url_for('services') }}">Our Services</a></li>
-                <li><a href="{{ url_for('buyer_dashboard') }}">Buyer Dashboard</a></li>
+                <li><a href="{{ url_for('buyer_dashboard') }}"> Dashboard</a></li>
                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
             {% endif %}
           {% else %}

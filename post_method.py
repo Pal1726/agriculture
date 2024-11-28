@@ -171,6 +171,7 @@ def buyer_signup():
     return render_template('buyer_signup.html')
 
 @app.route('/seller_signup', methods=['GET', 'POST'])
+@app.route('/seller_signup', methods=['GET', 'POST'])
 def seller_signup():
     if request.method == 'POST':
         # Collect form data
@@ -180,32 +181,47 @@ def seller_signup():
         password = request.form['password']
         phone1 = request.form['phone1']
         phone2 = request.form.get('phone2')
-        gst=request.form['GST']
+        gst = request.form['GST']
 
-        # Hash the password before saving to database
+        # Address Fields
+        street = request.form['street']
+        city = request.form['city']
+        region = request.form.get('region')
+        pincode = request.form['pincode']
+        country = request.form['country']
+
+        # Hash the password
         hashed_password = generate_password_hash(password)
 
-        # Connect to the database and insert buyer data
+        # Database Operations
         connection = get_db_connection()
         cursor = connection.cursor()
         try:
+            # Insert into Address table first
             cursor.execute("""
-                INSERT INTO Seller (name, username, email, password, phone1, phone2,gst_number)
-                VALUES (%s, %s, %s, %s, %s, %s,%s)
-            """, (name, username, email, hashed_password, phone1, phone2,gst))
+                INSERT INTO Address (street, city, region, pincode, country)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (street, city, region, pincode, country))
+            address_id = cursor.lastrowid  # Get the auto-generated address_id
+
+            # Insert into Seller table with the generated address_id
+            cursor.execute("""
+                INSERT INTO Seller (name, username, email, password, phone1, phone2, gst_number, address_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (name, username, email, hashed_password, phone1, phone2, gst, address_id))
             connection.commit()
-            flash("Signup successful! You can now log in.","success")
+
+            flash("Signup successful! You can now log in.", "success")
             return redirect(url_for('seller_login'))
 
         except mysql.connector.IntegrityError:
-            flash("Username or email already exists. Please try again.","error")
+            flash("Username or email already exists. Please try again.", "error")
             return redirect(url_for('seller_signup'))
 
         finally:
             cursor.close()
             connection.close()
 
-    
     return render_template('seller_signup.html')
 
 @app.route('/add_product', methods=['GET', 'POST'])
@@ -429,12 +445,119 @@ def logout():
     flash("You have been logged out.")
     return redirect(url_for('index'))
 
-@app.route('/buyer_dashboard')
+@app.route('/buyer_dashboard', methods=['GET', 'POST'])
 @login_required
 @role_required('buyer')
 def buyer_dashboard():
-    return render_template('buyer_dashboard.html')
+    page = request.args.get('page', 1, type=int)
+    per_page = 9  
+    offset = (page - 1) * per_page
+    search_query = request.args.get('search', '')  
+
+    
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    
+    count_query = """
+        SELECT COUNT(*) 
+        FROM Product
+        WHERE product_title LIKE %s
+    """
+    cursor.execute(count_query, ('%' + search_query + '%',))  
+    total_products = cursor.fetchone()[0]  
+    total_pages = ceil(total_products / per_page)
+
+    
+    product_query = """
+        SELECT product_id, product_title, product_mrp, product_image 
+        FROM Product
+        WHERE product_title LIKE %s
+        LIMIT %s OFFSET %s
+    """
+    cursor.execute(product_query, ('%' + search_query + '%', per_page, offset))
+    products = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    return render_template('buyer_dashboard.html', products=products, current_page=page, total_pages=total_pages, search_query=search_query)
+
+@app.route('/buyer_dashboard/<int:product_id>')
+@login_required
+@role_required('buyer')
+def product_info(product_id):
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    # Updated query to fetch seller details
+    product_query = """
+        SELECT p.product_id, p.product_title, p.product_mrp, p.product_image, 
+               p.product_description, p.product_stock, p.delivery_available, 
+               s.name AS seller_name, a.city AS seller_city
+        FROM Product p
+        JOIN Seller s ON p.seller_id = s.seller_id
+        LEFT JOIN Address a ON s.address_id = a.address_id
+        WHERE p.product_id = %s
+    """
+    
+    cursor.execute(product_query, (product_id,))
+    product = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    if not product:
+        flash("Product not found or you don't have permission to view this product.", "danger")
+        return redirect(url_for('buyer_dashboard'))  # Redirect to the buyer dashboard if product is not found
+
+    return render_template('product_info.html', product=product)
 
 
+@app.route('/add_to_cart/<int:product_id>', methods=['POST'])
+@login_required
+@role_required('buyer')
+def add_to_cart(product_id):
+    quantity = request.form.get('quantity', type=int)
+
+    if quantity <= 0:
+        flash("Please select a valid quantity.", "danger")
+        return redirect(url_for('product_info', product_id=product_id))
+
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    # Get product details to check stock availability
+    cursor.execute("""
+        SELECT product_stock
+        FROM Product
+        WHERE product_id = %s
+    """, (product_id,))
+    product = cursor.fetchone()
+
+    if not product:
+        flash("Product not found.", "danger")
+        return redirect(url_for('buyer_dashboard'))
+
+    stock_available = product[0]
+
+    # Check if the requested quantity is greater than the available stock
+    if quantity > stock_available:
+        flash(f"Only {stock_available} units available in stock.", "danger")
+        return redirect(url_for('product_info', product_id=product_id))
+
+    # Add the product to the cart for the current buyer
+    cursor.execute("""
+        INSERT INTO Cart (buyer_id, product_id, quantity)
+        VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE quantity = quantity + %s
+    """, (current_user.id, product_id, quantity, quantity))
+
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+    flash("Product added to cart successfully!", "success")
+    return redirect(url_for('cart_page'))
 if __name__ == '__main__':
     app.run(debug=True) 
