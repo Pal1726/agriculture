@@ -6,12 +6,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='post_method.css') }}">
 </head>
 <body>
-     <a href="{{ url_for('my_products') }}">Back to My Products</a>
+    
      
 
     
 
     <form action="{{ url_for('add_product') }}" method="post" enctype="multipart/form-data">
+         <a href="{{ url_for('my_products') }}">Back to My Products</a>
 
         <h1>Insert Your New Product 🛒</h1>
         <label for="title">Product Name:</label>
