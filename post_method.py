@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, redirect, url_for, flash,session
 import mysql.connector
 import os
@@ -513,51 +514,95 @@ def product_info(product_id):
 
     return render_template('product_info.html', product=product)
 
-
 @app.route('/add_to_cart/<int:product_id>', methods=['POST'])
 @login_required
 @role_required('buyer')
 def add_to_cart(product_id):
+    
     quantity = request.form.get('quantity', type=int)
+    buyer_id = session.get('user_id')
 
-    if quantity <= 0:
-        flash("Please select a valid quantity.", "danger")
+    if not buyer_id:
+        flash('You need to be logged in to add items to the cart.', 'danger')
+        return redirect(url_for('buyer_login'))
+
+    # Check if quantity is provided and is a positive integer
+    if quantity is None or quantity <= 0:
+        flash('Please enter a valid quantity.', 'danger')
         return redirect(url_for('product_info', product_id=product_id))
 
     connection = get_db_connection()
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
 
-    # Get product details to check stock availability
+    # Fetch product details including stock, price, etc.
     cursor.execute("""
-        SELECT product_stock
+        SELECT product_title, product_stock, product_mrp, delivery_available
         FROM Product
         WHERE product_id = %s
     """, (product_id,))
     product = cursor.fetchone()
 
     if not product:
-        flash("Product not found.", "danger")
-        return redirect(url_for('buyer_dashboard'))
-
-    stock_available = product[0]
-
-    # Check if the requested quantity is greater than the available stock
-    if quantity > stock_available:
-        flash(f"Only {stock_available} units available in stock.", "danger")
+        flash('Product not found!', 'danger')
         return redirect(url_for('product_info', product_id=product_id))
 
-    # Add the product to the cart for the current buyer
+    # Check if the requested quantity exceeds available stock
+    if quantity > product['product_stock']:
+        flash(f'Only {product["product_stock"]} units of {product["product_title"]} are available.', 'warning')
+        return redirect(url_for('product_info', product_id=product_id))
+
+    # Check if delivery is available for the product
+    if not product['delivery_available']:
+        flash(f'Delivery is not available for {product["product_title"]}.', 'warning')
+        return redirect(url_for('product_info', product_id=product_id))
+
+    # Insert or update the product in the Cart table
     cursor.execute("""
         INSERT INTO Cart (buyer_id, product_id, quantity)
         VALUES (%s, %s, %s)
         ON DUPLICATE KEY UPDATE quantity = quantity + %s
-    """, (current_user.id, product_id, quantity, quantity))
-
+    """, (buyer_id, product_id, quantity, quantity))
     connection.commit()
+
+    flash(f'{quantity} units of {product["product_title"]} have been added to your cart.', 'success')
     cursor.close()
     connection.close()
 
-    flash("Product added to cart successfully!", "success")
-    return redirect(url_for('cart_page'))
+    return redirect(url_for('buyer_dashboard'))
+
+
+
+@app.route('/view_cart')
+@login_required
+@role_required('buyer')
+def view_cart():
+    buyer_id = session.get('user_id')
+    
+    if not buyer_id:
+        flash('Please log in to view your cart.', 'warning')
+        return redirect(url_for('buyer_login'))
+    
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # Query to fetch cart items for the logged-in buyer
+    cursor.execute("""
+        SELECT p.product_title, c.quantity, p.product_mrp, (c.quantity * p.product_mrp) AS subtotal
+        FROM Cart c
+        JOIN Product p ON c.product_id = p.product_id
+        WHERE c.buyer_id = %s
+    """, (buyer_id,))
+    cart_items = cursor.fetchall()
+
+    # Calculate total amount
+    total_amount = sum(item['subtotal'] for item in cart_items)
+
+    cursor.close()
+    connection.close()
+
+    if not cart_items:
+        flash('Your cart is empty.', 'info')
+
+    return render_template('view_cart.html', cart_items=cart_items, total_amount=total_amount)
 if __name__ == '__main__':
     app.run(debug=True) 
