@@ -63,22 +63,33 @@
 
     <!-- Navigation Menu -->
     <nav id="navmenu" class="navmenu ms-auto">
-      <ul>
-        <li class="dropdown">
-          <a href="{{ url_for('buyer_dashboard') }}">
-            <span>Settings</span> 
-            <i class="bi bi-chevron-down toggle-dropdown"></i>
-          </a>
-          <ul>
-            <li><a href="{{ url_for('index') }}">Home</a></li>
-            <li><a href="{{ url_for('services') }}">Our Services</a></li>
-            <li><a href="#">Dropdown 3</a></li>
-            <li><a href="{{ url_for('logout') }}">Logout</a></li>
-          </ul>
-        </li>
+  <ul class="d-flex align-items-center">
+    <!-- Dropdown for Settings -->
+    <li class="dropdown">
+      <a href="{{ url_for('buyer_dashboard') }}" class="nav-link">
+        <span>Settings</span>
+        <i class="bi bi-chevron-down toggle-dropdown"></i>
+      </a>
+      <ul class="dropdown-menu">
+        <li><a href="{{ url_for('index') }}">Home</a></li>
+        <li><a href="{{ url_for('services') }}">Our Services</a></li>
+        <li><a href="#">Dropdown 3</a></li>
+        <li><a href="{{ url_for('logout') }}">Logout</a></li>
       </ul>
-      <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
-    </nav>
+    </li>
+    
+    <!-- Cart Icon -->
+    <li class="nav-item ms-3">
+      <a href="{{ url_for('view_cart') }}" class="nav-link d-flex align-items-center">
+        <i class="bi bi-cart3" style="font-size: 1.5rem;"></i>
+        <span class="ms-2">Cart</span>
+      </a>
+    </li>
+  </ul>
+  <!-- Mobile Nav Toggle -->
+  <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+</nav>
+
 
   </div>
  </header>
