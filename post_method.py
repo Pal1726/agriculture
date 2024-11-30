@@ -171,7 +171,7 @@ def buyer_signup():
    
     return render_template('buyer_signup.html')
 
-@app.route('/seller_signup', methods=['GET', 'POST'])
+
 @app.route('/seller_signup', methods=['GET', 'POST'])
 def seller_signup():
     if request.method == 'POST':
@@ -438,13 +438,6 @@ def delete_product(product_id):
 
 
 
-@app.route('/logout')
-@login_required
-def logout():
-    session.clear()
-
-    flash("You have been logged out.")
-    return redirect(url_for('index'))
 
 @app.route('/buyer_dashboard', methods=['GET', 'POST'])
 @login_required
@@ -510,7 +503,7 @@ def product_info(product_id):
 
     if not product:
         flash("Product not found or you don't have permission to view this product.", "danger")
-        return redirect(url_for('buyer_dashboard'))  # Redirect to the buyer dashboard if product is not found
+        return redirect(url_for('buyer_dashboard'))  
 
     return render_template('product_info.html', product=product)
 
@@ -526,7 +519,7 @@ def add_to_cart(product_id):
         flash('You need to be logged in to add items to the cart.', 'danger')
         return redirect(url_for('buyer_login'))
 
-    # Check if quantity is provided and is a positive integer
+    
     if quantity is None or quantity <= 0:
         flash('Please enter a valid quantity.', 'danger')
         return redirect(url_for('product_info', product_id=product_id))
@@ -534,7 +527,7 @@ def add_to_cart(product_id):
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    # Fetch product details including stock, price, etc.
+    
     cursor.execute("""
         SELECT product_title, product_stock, product_mrp, delivery_available
         FROM Product
@@ -546,17 +539,17 @@ def add_to_cart(product_id):
         flash('Product not found!', 'danger')
         return redirect(url_for('product_info', product_id=product_id))
 
-    # Check if the requested quantity exceeds available stock
+    
     if quantity > product['product_stock']:
         flash(f'Only {product["product_stock"]} units of {product["product_title"]} are available.', 'warning')
         return redirect(url_for('product_info', product_id=product_id))
 
-    # Check if delivery is available for the product
-    if not product['delivery_available']:
-        flash(f'Delivery is not available for {product["product_title"]}.', 'warning')
-        return redirect(url_for('product_info', product_id=product_id))
+   
+    # if not product['delivery_available']:
+    #     flash(f'Delivery is not available for {product["product_title"]}.', 'warning')
+    #     return redirect(url_for('product_info', product_id=product_id))
 
-    # Insert or update the product in the Cart table
+    
     cursor.execute("""
         INSERT INTO Cart (buyer_id, product_id, quantity)
         VALUES (%s, %s, %s)
@@ -587,7 +580,13 @@ def view_cart():
 
     # Query to fetch cart items for the logged-in buyer
     cursor.execute("""
-        SELECT p.product_title, c.quantity, p.product_mrp, (c.quantity * p.product_mrp) AS subtotal
+        SELECT 
+            c.product_id,
+            p.product_title, 
+            c.quantity, 
+            p.product_mrp, 
+            p.product_stock,
+            (c.quantity * p.product_mrp) AS subtotal
         FROM Cart c
         JOIN Product p ON c.product_id = p.product_id
         WHERE c.buyer_id = %s
@@ -595,7 +594,7 @@ def view_cart():
     cart_items = cursor.fetchall()
 
     # Calculate total amount
-    total_amount = sum(item['subtotal'] for item in cart_items)
+    total_amount = sum(item['subtotal'] for item in cart_items) if cart_items else 0
 
     cursor.close()
     connection.close()
@@ -604,5 +603,170 @@ def view_cart():
         flash('Your cart is empty.', 'info')
 
     return render_template('view_cart.html', cart_items=cart_items, total_amount=total_amount)
+
+@app.route('/update_cart_quantity/<int:product_id>', methods=['POST'])
+@login_required
+@role_required('buyer')
+def update_cart_quantity(product_id):
+    buyer_id = session.get('user_id')
+    action = request.form.get('action')
+
+    if not buyer_id:
+        flash('Please log in to update your cart.', 'warning')
+        return redirect(url_for('buyer_login'))
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # Fetch current quantity and stock
+    cursor.execute("""
+        SELECT c.quantity, p.product_stock
+        FROM Cart c
+        JOIN Product p ON c.product_id = p.product_id
+        WHERE c.buyer_id = %s AND c.product_id = %s
+    """, (buyer_id, product_id))
+    cart_item = cursor.fetchone()
+
+    if not cart_item:
+        flash('Item not found in cart.', 'danger')
+        return redirect(url_for('view_cart'))
+
+    current_quantity = cart_item['quantity']
+    max_stock = cart_item['product_stock']
+
+    # Determine new quantity based on the action
+    if action == 'increment' and current_quantity < max_stock:
+        new_quantity = current_quantity + 1
+    elif action == 'decrement' and current_quantity > 1:
+        new_quantity = current_quantity - 1
+    else:
+        new_quantity = current_quantity
+
+    # Update the cart quantity
+    cursor.execute("""
+        UPDATE Cart
+        SET quantity = %s
+        WHERE buyer_id = %s AND product_id = %s
+    """, (new_quantity, buyer_id, product_id))
+    connection.commit()
+
+    cursor.close()
+    connection.close()
+
+    flash('Cart updated successfully.', 'success')
+    return redirect(url_for('view_cart'))
+
+
+
+@app.route('/delete_from_cart/<int:product_id>', methods=['POST'])
+@login_required
+@role_required('buyer')
+def delete_from_cart(product_id):
+    buyer_id = session.get('user_id')
+
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    try:
+       
+        cursor.execute("""
+        DELETE FROM Cart
+        WHERE buyer_id = %s AND product_id = %s
+    """, (buyer_id, product_id))
+        connection.commit()
+
+        flash('Item removed from your cart.', 'success')
+    except Exception as e:
+        connection.rollback()
+        flash("An error occurred while deleting the product.", "danger")
+        print(f"Error: {e}")
+    finally:
+        cursor.close()
+        connection.close()
+
+    return redirect(url_for('view_cart'))
+
+@app.route('/checkout')
+@login_required
+@role_required('buyer')
+def checkout():
+    buyer_id = session.get('user_id')
+    
+    if not buyer_id:
+        flash('Please log in to view your cart.', 'warning')
+        return redirect(url_for('buyer_login'))
+    print(f"Buyer ID: {buyer_id}")
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # Query to fetch cart items, buyer's delivery address, and product delivery availability
+    cursor.execute("""
+    SELECT 
+        c.product_id,
+        p.product_title,
+        p.product_stock,
+        (c.quantity * p.product_mrp) AS subtotal,
+        CONCAT(a.street, ', ', a.city, ', ', a.region, ', ', a.pincode, ', ', a.country) AS delivery_address,  
+        p.delivery_available
+    FROM Cart c
+    JOIN Product p ON c.product_id = p.product_id
+    JOIN Buyer b ON c.buyer_id = b.buyer_id  -- Join the Cart table with Buyer table
+    JOIN Address a ON b.address_id = a.address_id  -- Join the Address table using address_id from Buyer table
+    WHERE c.buyer_id = %s
+    """, (buyer_id,))
+
+    cart_items = cursor.fetchall()
+    print(cart_items)
+
+    # Get the buyer's address (assuming there's only one address per buyer)
+    buyer_address = cart_items[0]['delivery_address'] if cart_items else None
+
+    # Calculate total amount
+    total_amount = sum(item['subtotal'] for item in cart_items) if cart_items else 0
+
+    cursor.close()
+    connection.close()
+
+    return render_template('checkout.html', cart_items=cart_items, total_amount=total_amount, buyer_address=buyer_address)
+
+@app.route('/update_address', methods=['POST'])
+@login_required
+def update_address():
+    buyer_id = session.get('user_id')
+    
+    if not buyer_id:
+        flash('Please log in to update your address.', 'warning')
+        return redirect(url_for('buyer_login'))
+    
+    new_address = request.form.get('delivery_address')
+    
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    
+    # Update the delivery address in the Address table
+    cursor.execute("""
+        UPDATE Address 
+        SET address = %s 
+        WHERE buyer_id = %s
+    """, (new_address, buyer_id))
+    
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+    flash('Address updated successfully!', 'success')
+    return redirect(url_for('checkout'))
+
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    session.clear()
+
+    flash("You have been logged out.")
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
     app.run(debug=True) 
