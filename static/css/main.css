@@ -2332,3 +2332,7 @@ section,
 .text-success {
     color: #28a745 !important;
 }
+
+#placeOrderButton a{
+  color:white;
+}
