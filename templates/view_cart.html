@@ -83,7 +83,7 @@
     <div class="page-title dark-background" data-aos="fade" 
      style="background-image: url('{{ url_for('static', filename='img/page-title-bg.webp') }}');"> 
       <div class="container position-relative">
-        <h1>Product Details 🔍</h1>
+        <h1>View Cart 🛍️</h1>
         <p>Esse dolorum voluptatum ullam est sint nemo et est ipsa porro placeat quibusdam quia assumenda numquam molestias.</p>
         <nav class="breadcrumbs">
           <ol>
@@ -93,8 +93,74 @@
         </nav>
       </div>
     </div><!-- End Page Title -->
+     
 
+  <!-- Cart Items Section -->
+  <div class="container mt-4">
+    <h3>Check your Items</h3>
+    <table class="table table-bordered">
+      <thead class="table-dark">
+        <tr>
+          <th>Serial No</th>
+          <th>Name</th>
+          <th>Quantity</th>
+          <th>MRP per kg</th>
+          <th>Total (in Rs)</th>
+          <th>Delete</th>
+          
+        </tr>
+      </thead>
+      <tbody id="cartItems">
+        {% for item in cart_items %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ item.product_title }}</td>
+        <td>
+            <form method="POST" action="{{ url_for('update_cart_quantity', product_id=item.product_id) }}" class="d-inline">
+                <button type="submit" name="action" value="decrement" class="btn btn-sm btn-secondary" {% if item.quantity <= 1 %}disabled{% endif %}>-</button>
+                <input 
+                    type="number" 
+                    name="quantity" 
+                    value="{{ item.quantity }}" 
+                    min="1" 
+                    max="{{ item.product_stock }}" 
+                    readonly 
+                    class="form-control d-inline-block" 
+                    style="width: 50px; text-align: center;">
+                <button type="submit" name="action" value="increment" class="btn btn-sm btn-secondary" {% if item.quantity >= item.product_stock %}disabled{% endif %}>+</button>
+            </form>
+        </td>
+        <td>{{ item.product_mrp }}</td>
+
+        <td>{{ item.subtotal }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('delete_from_cart', product_id=item.product_id) }}" class="d-inline">
+            <button type="submit" class="btn btn-sm btn-danger">❌</button>
+          </form>
+        </td>
+        
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+    <div class="container mt-4">
     
+    <div class="d-flex justify-content-between">
+      <h4 class="text-end">Grand total = Rs. <span id="grandTotal">{{ total_amount }}</span></h4>
+    </div>
+  </div>
+  
+
+  <!-- Buttons Section -->
+  <div class="container mt-4">
+    <div class="d-flex justify-content-between">
+      <button class="btn btn-warning" onclick="history.back()">⬅️ Go Back</button>
+      <button class="btn btn-success" id="placeOrderButton"><a href="{{ url_for('checkout') }}">Checkout 👍</a></button>
+    </div>
+  </div>
+
     </main>
 
 
