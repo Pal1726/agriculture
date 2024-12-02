@@ -109,6 +109,14 @@ CREATE TABLE IF NOT EXISTS Payment (
 ALTER TABLE Cart
 ADD UNIQUE (buyer_id, product_id);
 
+CREATE TABLE IF NOT EXISTS BuyerAddress (
+    buyer_address_id INT AUTO_INCREMENT PRIMARY KEY,
+    buyer_id INT NOT NULL,
+    address_id INT NOT NULL,
+    FOREIGN KEY (buyer_id) REFERENCES Buyer(buyer_id) ON DELETE CASCADE,
+    FOREIGN KEY (address_id) REFERENCES Address(address_id) ON DELETE CASCADE
+);
+s
 
 
 
