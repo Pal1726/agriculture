@@ -592,6 +592,7 @@ def view_cart():
         WHERE c.buyer_id = %s
     """, (buyer_id,))
     cart_items = cursor.fetchall()
+    print(cart_items)
 
     # Calculate total amount
     total_amount = sum(item['subtotal'] for item in cart_items) if cart_items else 0
@@ -609,7 +610,7 @@ def view_cart():
 @role_required('buyer')
 def update_cart_quantity(product_id):
     buyer_id = session.get('user_id')
-    action = request.form.get('action')
+    actions = request.form.get('action')
 
     if not buyer_id:
         flash('Please log in to update your cart.', 'warning')
@@ -635,9 +636,9 @@ def update_cart_quantity(product_id):
     max_stock = cart_item['product_stock']
 
     # Determine new quantity based on the action
-    if action == 'increment' and current_quantity < max_stock:
+    if actions == 'increment' and current_quantity < max_stock:
         new_quantity = current_quantity + 1
-    elif action == 'decrement' and current_quantity > 1:
+    elif actions == 'decrement' and current_quantity > 1:
         new_quantity = current_quantity - 1
     else:
         new_quantity = current_quantity
@@ -686,7 +687,7 @@ def delete_from_cart(product_id):
 
     return redirect(url_for('view_cart'))
 
-@app.route('/checkout')
+@app.route('/checkout', methods=['GET', 'POST'])
 @login_required
 @role_required('buyer')
 def checkout():
@@ -695,69 +696,290 @@ def checkout():
     if not buyer_id:
         flash('Please log in to view your cart.', 'warning')
         return redirect(url_for('buyer_login'))
-    print(f"Buyer ID: {buyer_id}")
 
+    # Establish database connection
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    # Query to fetch cart items, buyer's delivery address, and product delivery availability
+    # Fetch the buyer's address
+    cursor.execute("""
+    SELECT * FROM Address 
+    WHERE address_id = (SELECT address_id FROM Buyer WHERE buyer_id = %s)
+    """, (buyer_id,))
+    existing_address = cursor.fetchone()
+
+    # Query to fetch cart items, product stock, and delivery availability
     cursor.execute("""
     SELECT 
         c.product_id,
         p.product_title,
         p.product_stock,
+        p.delivery_available,
         (c.quantity * p.product_mrp) AS subtotal,
-        CONCAT(a.street, ', ', a.city, ', ', a.region, ', ', a.pincode, ', ', a.country) AS delivery_address,  
-        p.delivery_available
+        c.quantity
     FROM Cart c
     JOIN Product p ON c.product_id = p.product_id
-    JOIN Buyer b ON c.buyer_id = b.buyer_id  -- Join the Cart table with Buyer table
-    JOIN Address a ON b.address_id = a.address_id  -- Join the Address table using address_id from Buyer table
     WHERE c.buyer_id = %s
     """, (buyer_id,))
-
     cart_items = cursor.fetchall()
-    print(cart_items)
 
-    # Get the buyer's address (assuming there's only one address per buyer)
-    buyer_address = cart_items[0]['delivery_address'] if cart_items else None
+    if not cart_items:
+        flash('Your cart is empty. Add products to the cart before proceeding.', 'warning')
+        return redirect(url_for('view_cart'))
 
     # Calculate total amount
     total_amount = sum(item['subtotal'] for item in cart_items) if cart_items else 0
 
+    if request.method == 'POST':
+        # Step 1: Insert into Orders table
+        cursor.execute("""
+        INSERT INTO Orders (buyer_id, total_amount, order_status)
+        VALUES (%s, %s, 'Pending')
+        """, (buyer_id, total_amount))
+        order_id = cursor.lastrowid  # Get the generated order_id
+
+        # Step 2: Insert into OrderItem table and update product stock
+        for item in cart_items:
+            if item['quantity'] > item['product_stock']:
+                flash(f"Insufficient stock for {item['product_title']}.", 'danger')
+                return redirect(url_for('checkout'))
+
+            # Insert item into OrderItem table
+            cursor.execute("""
+            INSERT INTO OrderItem (order_id, product_id, quantity, total_price)
+            VALUES (%s, %s, %s, %s)
+            """, (order_id, item['product_id'], item['quantity'], item['subtotal']))
+
+            # Update the product stock after placing the order
+            cursor.execute("""
+            UPDATE Product
+            SET product_stock = product_stock - %s
+            WHERE product_id = %s
+            """, (item['quantity'], item['product_id']))
+
+        # Step 3: Empty the Cart
+        cursor.execute("""
+        DELETE FROM Cart WHERE buyer_id = %s
+        """, (buyer_id,))
+
+        # Commit the changes to the database
+        connection.commit()
+
+        flash('Your order has been placed successfully!', 'success')
+        cursor.close()
+        connection.close()
+
+        return redirect(url_for('order_summary', order_id=order_id))
+
     cursor.close()
     connection.close()
 
-    return render_template('checkout.html', cart_items=cart_items, total_amount=total_amount, buyer_address=buyer_address)
+    return render_template('checkout.html', cart_items=cart_items, total_amount=total_amount, existing_address=existing_address)
 
-@app.route('/update_address', methods=['POST'])
+@app.route('/add_address', methods=['GET', 'POST'])
 @login_required
-def update_address():
+@role_required('buyer')
+def add_address():
+    buyer_id = session.get('user_id')  # Ensure `buyer_id` is retrieved from the session
+
+    if request.method == 'POST':
+        street = request.form.get('street')
+        city = request.form.get('city')
+        region = request.form.get('region')
+        pincode = request.form.get('pincode')
+        country = request.form.get('country')
+
+        # Validate required fields
+        if not all([street, city, pincode, country]):
+            flash('Please fill in all required fields.', 'warning')
+            return redirect(url_for('add_address'))
+
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # Insert the new address into the Address table
+        cursor.execute("""
+            INSERT INTO Address (street, city, region, pincode, country)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (street, city, region, pincode, country))
+        address_id = cursor.lastrowid  # Get the newly inserted address ID
+
+        # Link the address with the buyer in the BuyerAddress table
+        cursor.execute("""
+            INSERT INTO BuyerAddress (buyer_id, address_id)
+            VALUES (%s, %s)
+        """, (buyer_id, address_id))
+
+        connection.commit()
+        cursor.close()
+        connection.close()
+
+        flash('Address added successfully!', 'success')
+        return redirect(url_for('addresses'))
+
+    return render_template('add_address.html')
+
+
+
+@app.route('/addresses', methods=['GET'])
+@login_required
+@role_required('buyer')
+def addresses():
     buyer_id = session.get('user_id')
-    
-    if not buyer_id:
-        flash('Please log in to update your address.', 'warning')
-        return redirect(url_for('buyer_login'))
-    
-    new_address = request.form.get('delivery_address')
-    
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # Fetch all addresses associated with the buyer
+    cursor.execute("""
+        SELECT a.*, 
+               (b.address_id = a.address_id) AS is_default  -- Highlight the default address
+        FROM Address a
+        INNER JOIN BuyerAddress ba ON a.address_id = ba.address_id
+        LEFT JOIN Buyer b ON b.buyer_id = ba.buyer_id
+        WHERE ba.buyer_id = %s
+    """, (buyer_id,))
+    addresses = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    return render_template('addresses.html', addresses=addresses)
+
+@app.route('/set_default_address/<int:address_id>', methods=['POST'])
+@login_required
+@role_required('buyer')
+def set_default_address(address_id):
+    buyer_id = session.get('user_id')
     connection = get_db_connection()
     cursor = connection.cursor()
-    
-    # Update the delivery address in the Address table
+
+    # Update the default address for the buyer
     cursor.execute("""
-        UPDATE Address 
-        SET address = %s 
+        UPDATE Buyer
+        SET address_id = %s
         WHERE buyer_id = %s
-    """, (new_address, buyer_id))
-    
+    """, (address_id, buyer_id))
+
     connection.commit()
     cursor.close()
     connection.close()
 
-    flash('Address updated successfully!', 'success')
-    return redirect(url_for('checkout'))
+    flash('Default address updated successfully.', 'success')
+    return redirect(url_for('addresses'))
 
+
+@app.route('/edit_address/<int:address_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('buyer')
+def edit_address(address_id):
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # Fetch the current address
+    cursor.execute("SELECT * FROM Address WHERE address_id = %s", (address_id,))
+    address = cursor.fetchone()
+
+    if not address:
+        flash('Address not found.', 'danger')
+        return redirect(url_for('addresses'))
+
+    if request.method == 'POST':
+        # Extract form data
+        street = request.form.get('street')
+        city = request.form.get('city')
+        region = request.form.get('region')
+        pincode = request.form.get('pincode')
+        country = request.form.get('country')
+
+        # Ensure all required fields are filled
+        if not all([street, city, pincode, country]):
+            flash('Please fill in all required fields.', 'warning')
+            return redirect(url_for('edit_address', address_id=address_id))
+
+        # Update the address
+        cursor.execute("""
+            UPDATE Address
+            SET street = %s, city = %s, region = %s, pincode = %s, country = %s
+            WHERE address_id = %s
+        """, (street, city, region, pincode, country, address_id))
+        connection.commit()
+
+        flash('Address updated successfully!', 'success')
+        return redirect(url_for('addresses'))
+
+    cursor.close()
+    connection.close()
+
+    return render_template('edit_address.html', address=address)
+
+@app.route('/order_summary/<int:order_id>', methods=['GET'])
+@login_required
+@role_required('buyer')
+def order_summary(order_id):
+    buyer_id = session.get('user_id')
+    
+    if not buyer_id:
+        flash('Please log in to view your order.', 'warning')
+        return redirect(url_for('buyer_login'))
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    # Fetch order details for the given order_id
+    cursor.execute("""
+    SELECT * FROM Orders
+    WHERE order_id = %s AND buyer_id = %s
+    """, (order_id, buyer_id))
+    order = cursor.fetchone()
+
+    if not order:
+        flash('Order not found.', 'danger')
+        return redirect(url_for('view_orders'))  # Redirect to orders list if order not found
+
+    # Fetch the order items
+    cursor.execute("""
+    SELECT oi.order_item_id, p.product_title, oi.quantity, oi.total_price
+    FROM OrderItem oi
+    JOIN Product p ON oi.product_id = p.product_id
+    WHERE oi.order_id = %s
+    """, (order_id,))
+    order_items = cursor.fetchall()
+
+    # Fetch the buyer's delivery address
+    cursor.execute("""
+    SELECT * FROM Address 
+    WHERE address_id = (SELECT address_id FROM Buyer WHERE buyer_id = %s)
+    """, (buyer_id,))
+    address = cursor.fetchone()
+
+    cursor.close()
+    connection.close()
+
+    return render_template('order_summary.html', order=order, order_items=order_items, address=address)
+
+@app.route('/view_orders')
+@login_required
+@role_required('buyer')
+def view_orders():
+    buyer_id = session.get('user_id')
+
+    if not buyer_id:
+        flash('Please log in to view your orders.', 'warning')
+        return redirect(url_for('buyer_login'))
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    cursor.execute("""
+    SELECT * FROM Orders
+    WHERE buyer_id = %s
+    """, (buyer_id,))
+    orders = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    return render_template('view_orders.html', orders=orders)
 
 
 @app.route('/logout')
