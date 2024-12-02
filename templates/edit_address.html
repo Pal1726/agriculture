@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADD Address</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='post_method.css') }}">
+</head>
+<body>
+    
+
+        <form action="{{ url_for('edit_address',address_id=address.address_id) }}" method="post" enctype="multipart/form-data">
+
+            <h1>ADD Address</h1>
+        <label for="street">Street:</label>
+        <input type="text" id="street" name="street" value="{{ address.street  }}" required>
+        <br>
+
+        <label for="city">City:</label>
+        <input type="text" id="city" name="city" value="{{ address.city  }}" required>
+        <br>
+
+        <label for="region">Region:</label>
+        <input type="text" id="region" name="region" value="{{ address.region  }}">
+        <br>
+
+        <label for="pincode">Pincode:</label>
+        <input type="text" id="pincode" name="pincode" value="{{ address.pincode  }}" required>
+        <br>
+
+        <label for="country">Country:</label>
+        <input type="text" id="country" name="country" value="{{ address.country  }}" required>
+        <br>
+
+        <button type="submit">Update Address</button>
+    </form>
+
+    <a href="{{ url_for('checkout') }}">Back to Checkout</a>
+</body>
+</html>
