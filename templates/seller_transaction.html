@@ -1,0 +1,35 @@
+<div class="container mt-4">
+    <h2>My Transactions</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Transaction ID</th>
+                <th>Transaction Date</th>
+                <th>Buyer Name</th>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Total Price</th>
+                <th>Transaction Amount</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transaction in transactions %}
+            <tr>
+                <td>{{ transaction.transaction_id }}</td>
+                <td>{{ transaction.transaction_date }}</td>
+                <td>{{ transaction.name }} </td>
+                <td>{{ transaction.product_title }}</td>
+                <td>{{ transaction.quantity }}</td>
+                <td>{{ transaction.total_price }}</td>
+                <td>{{ transaction.transaction_amount }}</td>
+                <td>{{ transaction.transaction_status }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="8">No transactions found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
