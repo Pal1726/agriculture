@@ -57,6 +57,7 @@
                 <li><a href="{{ url_for('index') }}" class="active">Home</a></li>
                 <li><a href="{{ url_for('services') }}">Our Services</a></li>
                 <li><a href="{{ url_for('my_products') }}">My Products</a></li>
+                <li><a href="{{ url_for('seller_transactions') }}">Transactions</a></li>
                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
             {% elif session['role'] == 'buyer' %}
                 <li><a href="{{ url_for('index') }}" class="active">Home</a></li>
