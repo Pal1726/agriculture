@@ -436,6 +436,60 @@ def delete_product(product_id):
 
     return redirect(url_for('my_products'))
 
+@app.route('/seller/transactions', methods=['GET'])
+@login_required
+@role_required('seller')
+def seller_transactions():
+    seller_id = session.get('user_id')
+    print("seller id=",seller_id)
+    
+    if not seller_id:
+        flash('Please log in to view your transactions.', 'warning')
+        return redirect(url_for('seller_login'))
+    
+    # Connect to the database
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    
+    # Query to fetch transactions
+    cursor.execute("""
+    SELECT 
+        t.transaction_id,
+        t.transaction_date,
+        t.transaction_status,
+        b.buyer_id,
+        b.name AS name,
+        
+        oi.product_id,
+        p.product_title,
+        oi.quantity,
+        oi.total_price,
+        t.amount AS transaction_amount
+    FROM 
+        Transaction t
+    JOIN 
+        Orders o ON t.order_id = o.order_id
+    JOIN 
+        OrderItem oi ON o.order_id = oi.order_id
+    JOIN 
+        Product p ON oi.product_id = p.product_id
+    JOIN 
+        Buyer b ON o.buyer_id = b.buyer_id
+    WHERE 
+        t.seller_id = %s
+    ORDER BY 
+        t.transaction_date DESC
+    """, (seller_id,))
+    
+    transactions = cursor.fetchall()
+    
+    cursor.close()
+    connection.close()
+    
+    return render_template('seller_transaction.html', transactions=transactions)
+
+
+
 
 
 
