@@ -10,6 +10,9 @@
     
 
         <form action="{{ url_for('add_address') }}" method="post" enctype="multipart/form-data">
+        <div class="alert alert-warning" role="alert">
+    Please add a delivery address before placing an order.
+</div>
 
             <h1>ADD Address</h1>
         <label for="street">Street:</label>
@@ -34,6 +37,7 @@
 
         <button type="submit">Add Address</button>
     </form>
+
 
     <a href="{{ url_for('checkout') }}">Back to Checkout</a>
 </body>
