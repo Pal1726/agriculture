@@ -60,7 +60,8 @@
           <ul>
             <li><a href="{{ url_for('index') }}">Home</a></li>
             <li><a href="{{ url_for('services') }}">Our Services</a></li>
-            <li><a href="#">Dropdown 3</a></li>
+            <li><a href="{{url_for('view_orders')}}">Orders</a></li>
+
             <li><a href="{{ url_for('logout') }}">Logout</a></li>
           </ul>
         </li>
@@ -78,7 +79,6 @@
 
   </header>
   <main class="main">
-
     <!-- Page Title -->
     <div class="page-title dark-background" data-aos="fade" 
      style="background-image: url('{{ url_for('static', filename='img/page-title-bg.webp') }}');"> 
@@ -105,6 +105,7 @@
         {% else %}
         <div class="mb-4">
             <h3>No Address Found</h3>
+      
       
 
 <a href="{{ url_for('add_address') }}">+ Add a New Address</a>
@@ -149,42 +150,38 @@
   </div>
   
 <!-- Payment Options -->
-<div class="container mt-4">
-    <h3>Select Your Payment Mode</h3>
-    <div class="d-flex align-items-center">
-        <label for="paymentOption" class="me-3 fw-bold">Payment Options:</label>
-        <div class="form-check me-3">
-            <input type="radio" name="paymentOption" id="creditCard" class="form-check-input" value="Credit Card" checked>
-            <label for="creditCard" class="form-check-label">
-                Credit Card
-            </label>
-        </div>
-        <div class="form-check me-3">
-            <input type="radio" name="paymentOption" id="debitCard" class="form-check-input" value="Debit Card">
-            <label for="debitCard" class="form-check-label">
-                Debit Card
-            </label>
-        </div>
-        <div class="form-check me-3">
-            <input type="radio" name="paymentOption" id="upi" class="form-check-input" value="UPI">
-            <label for="upi" class="form-check-label">
-                UPI
-            </label>
-        </div>
-        <div class="form-check me-3">
-            <input type="radio" name="paymentOption" id="cod" class="form-check-input" value="COD">
-            <label for="cod" class="form-check-label">
-                Cash on Delivery (COD)
-            </label>
+<form method="POST" action="{{ url_for('checkout') }}">
+    <!-- Payment Options -->
+    <div class="container mt-4">
+        <h3>Select Your Payment Mode</h3>
+        <div class="d-flex align-items-center">
+            <label for="paymentOption" class="me-3 fw-bold">Payment Options:</label>
+            <div class="form-check me-3">
+                <input type="radio" name="paymentOption" id="creditCard" class="form-check-input" value="Credit Card" checked>
+                <label for="creditCard" class="form-check-label">Credit Card</label>
+            </div>
+            <div class="form-check me-3">
+                <input type="radio" name="paymentOption" id="debitCard" class="form-check-input" value="Debit Card">
+                <label for="debitCard" class="form-check-label">Debit Card</label>
+            </div>
+            <div class="form-check me-3">
+                <input type="radio" name="paymentOption" id="upi" class="form-check-input" value="UPI">
+                <label for="upi" class="form-check-label">UPI</label>
+            </div>
+            <div class="form-check me-3">
+                <input type="radio" name="paymentOption" id="cod" class="form-check-input" value="COD">
+                <label for="cod" class="form-check-label">Cash on Delivery (COD)</label>
+            </div>
         </div>
     </div>
-</div>
+
+    
 
 <!-- Buttons Section -->
 <div class="container mt-4">
     <div class="d-flex justify-content-between">
-        <button class="btn btn-warning" onclick="history.back()">⬅️ Go Back</button>
-         <form method="POST">
+        <button class="btn btn-warning" id="placeOrderButton" ><a href="{{ url_for('view_cart') }}">⬅️ Go Back</a></button>
+         <form method="POST" action="{{ url_for('checkout')}}">
             <button type="submit" class="btn btn-success" id="placeOrderButton">Place Order 👍</button>
         </form>
     </div>
