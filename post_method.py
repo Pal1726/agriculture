@@ -5,6 +5,7 @@ import os
 from werkzeug.security import check_password_hash, generate_password_hash
 from math import ceil
 from functools import wraps
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -453,18 +454,17 @@ def seller_transactions():
     
     # Query to fetch transactions
     cursor.execute("""
-    SELECT 
+    SELECT DISTINCT
         t.transaction_id,
         t.transaction_date,
         t.transaction_status,
         b.buyer_id,
         b.name AS name,
         
-        oi.product_id,
         p.product_title,
-        oi.quantity,
-        oi.total_price,
-        t.amount AS transaction_amount
+        SUM(oi.quantity) AS total_quantity,
+        SUM(oi.total_price) AS total_price
+        
     FROM 
         Transaction t
     JOIN 
@@ -476,11 +476,13 @@ def seller_transactions():
     JOIN 
         Buyer b ON o.buyer_id = b.buyer_id
     WHERE 
-        t.seller_id = %s
+        p.seller_id = %s
+    GROUP BY 
+        t.transaction_id, t.transaction_date, t.transaction_status, b.buyer_id, b.name, p.product_title
     ORDER BY 
         t.transaction_date DESC
     """, (seller_id,))
-    
+
     transactions = cursor.fetchall()
     
     cursor.close()
@@ -517,8 +519,19 @@ def buyer_dashboard():
     total_pages = ceil(total_products / per_page)
 
     
+    
+    # Query to fetch paginated products with stock information
     product_query = """
-        SELECT product_id, product_title, product_mrp, product_image 
+        SELECT 
+            product_id, 
+            product_title, 
+            product_mrp, 
+            product_image, 
+            product_stock,
+            CASE 
+                WHEN product_stock = 0 THEN 1
+                ELSE 0
+            END AS is_out_of_stock
         FROM Product
         WHERE product_title LIKE %s
         LIMIT %s OFFSET %s
@@ -604,11 +617,22 @@ def add_to_cart(product_id):
     #     return redirect(url_for('product_info', product_id=product_id))
 
     
+    # Deduct stock when added to the cart
+    new_stock = product['product_stock'] - quantity
     cursor.execute("""
-        INSERT INTO Cart (buyer_id, product_id, quantity)
-        VALUES (%s, %s, %s)
-        ON DUPLICATE KEY UPDATE quantity = quantity + %s
-    """, (buyer_id, product_id, quantity, quantity))
+        UPDATE Product
+        SET product_stock = %s
+        WHERE product_id = %s
+    """, (new_stock, product_id))
+
+    # Record time when item is added to the cart
+    add_time = datetime.now()
+
+    cursor.execute("""
+        INSERT INTO Cart (buyer_id, product_id, quantity, added_at)
+        VALUES (%s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE quantity = quantity + %s, added_at = %s
+    """, (buyer_id, product_id, quantity, add_time, quantity, add_time))
     connection.commit()
 
     flash(f'{quantity} units of {product["product_title"]} have been added to your cart.', 'success')
@@ -640,13 +664,39 @@ def view_cart():
             c.quantity, 
             p.product_mrp, 
             p.product_stock,
-            (c.quantity * p.product_mrp) AS subtotal
+            (c.quantity * p.product_mrp) AS subtotal,
+            c.added_at
         FROM Cart c
         JOIN Product p ON c.product_id = p.product_id
         WHERE c.buyer_id = %s
     """, (buyer_id,))
     cart_items = cursor.fetchall()
-    print(cart_items)
+    
+    # Check for items added more than 10 minutes ago and restore stock if necessary
+    current_time = datetime.now()
+
+    for item in cart_items:
+        if current_time - item['added_at'] > timedelta(minutes=10):
+            # Restore stock if the item was added more than 10 minutes ago
+            cursor.execute("""
+                SELECT product_stock
+                FROM Product
+                WHERE product_id = %s
+            """, (item['product_id'],))
+            product = cursor.fetchone()
+            new_stock = product['product_stock'] + item['quantity']
+            cursor.execute("""
+                UPDATE Product
+                SET product_stock = %s
+                WHERE product_id = %s
+            """, (new_stock, item['product_id']))
+            
+            # Delete the cart item as it's expired
+            cursor.execute("""
+                DELETE FROM Cart
+                WHERE product_id = %s AND buyer_id = %s
+            """, (item['product_id'], buyer_id))
+            connection.commit()
 
     # Calculate total amount
     total_amount = sum(item['subtotal'] for item in cart_items) if cart_items else 0
@@ -697,6 +747,20 @@ def update_cart_quantity(product_id):
     else:
         new_quantity = current_quantity
 
+    # Adjust stock before updating cart
+    if new_quantity > current_quantity:
+        cursor.execute("""
+            UPDATE Product
+            SET product_stock = product_stock - 1
+            WHERE product_id = %s
+        """, (product_id,))
+    elif new_quantity < current_quantity:
+        cursor.execute("""
+            UPDATE Product
+            SET product_stock = product_stock + 1
+            WHERE product_id = %s
+        """, (product_id,))
+
     # Update the cart quantity
     cursor.execute("""
         UPDATE Cart
@@ -720,17 +784,40 @@ def delete_from_cart(product_id):
     buyer_id = session.get('user_id')
 
     connection = get_db_connection()
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)  # Use dictionary cursor
 
     try:
-       
+        # Fetch the current quantity of the item in the cart
         cursor.execute("""
-        DELETE FROM Cart
-        WHERE buyer_id = %s AND product_id = %s
-    """, (buyer_id, product_id))
+            SELECT quantity 
+            FROM Cart 
+            WHERE buyer_id = %s AND product_id = %s
+        """, (buyer_id, product_id))
+        cart_item = cursor.fetchone()
+
+        if not cart_item:
+            flash('Item not found in cart.', 'danger')
+            return redirect(url_for('view_cart'))
+
+        quantity = cart_item['quantity']  # Access quantity as a dictionary key
+
+        # Perform deletion
+        cursor.execute("""
+            DELETE FROM Cart
+            WHERE buyer_id = %s AND product_id = %s
+        """, (buyer_id, product_id))
+        connection.commit()
+
+        # Update product stock
+        cursor.execute("""
+            UPDATE Product
+            SET product_stock = product_stock + %s
+            WHERE product_id = %s
+        """, (quantity, product_id))
         connection.commit()
 
         flash('Item removed from your cart.', 'success')
+
     except Exception as e:
         connection.rollback()
         flash("An error occurred while deleting the product.", "danger")
@@ -741,19 +828,18 @@ def delete_from_cart(product_id):
 
     return redirect(url_for('view_cart'))
 
+
 @app.route('/checkout', methods=['GET', 'POST'])
 @login_required
 @role_required('buyer')
 def checkout():
     payment_method = request.form.get('paymentOption')
-    
     buyer_id = session.get('user_id')
-    
+
     if not buyer_id:
         flash('Please log in to view your cart.', 'warning')
         return redirect(url_for('buyer_login'))
 
-    
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
@@ -776,6 +862,7 @@ def checkout():
             p.product_title,
             p.product_stock,
             p.delivery_available,
+            p.seller_id,
             (c.quantity * p.product_mrp) AS subtotal,
             c.quantity
         FROM Cart c
@@ -794,8 +881,8 @@ def checkout():
         if request.method == 'POST':
             # Step 1: Insert into Orders table
             cursor.execute("""
-            INSERT INTO Orders (buyer_id, total_amount, order_status)
-            VALUES (%s, %s, 'completed')
+            INSERT INTO Orders (buyer_id, total_amount, order_status, created_at)
+            VALUES (%s, %s, 'Completed', NOW())
             """, (buyer_id, total_amount))
             order_id = cursor.lastrowid  # Get the generated order_id
     
@@ -818,14 +905,20 @@ def checkout():
                 WHERE product_id = %s
                 """, (item['quantity'], item['product_id']))
     
-            # Step 3: Insert payment details into Payment table
+            # Step 3: Insert into Transaction table
+            for item in cart_items:
+                print(f"Processing transaction for Product ID: {item['product_id']}, Buyer ID: {buyer_id}, Seller ID: {item['seller_id']}")
+                cursor.execute("""
+                INSERT INTO Transaction (order_id, buyer_id, seller_id, transaction_date, transaction_status)
+                VALUES (%s, %s, %s, NOW(), 'Completed')
+                """, (order_id, buyer_id, item['seller_id']))
+    
+            # Step 4: Insert payment details into Payment table
             payment_status = 'Completed' if payment_method in ['UPI', 'Credit Card', 'Debit Card'] else 'Pending'
             cursor.execute("""
             INSERT INTO Payment (order_id, payment_method, payment_status)
             VALUES (%s, %s, %s)
             """, (order_id, payment_method, payment_status))
-            payment_id = cursor.lastrowid  # Get the generated payment_id
-    
     
             # Step 5: Empty the Cart
             cursor.execute("""
@@ -840,15 +933,9 @@ def checkout():
             return redirect(url_for('order_confirmation', order_id=order_id))
 
     except Exception as e:
-    # Rollback the transaction in case of an error
+        # Rollback the transaction in case of an error
         connection.rollback()
-        # Create a pending order to track the failure
-        cursor.execute("""
-        INSERT INTO Orders (buyer_id, total_amount, order_status)
-        VALUES (%s, %s, %s)
-        """, (buyer_id, total_amount, 'Pending'))
-        connection.commit()
-        flash('Error placing order. Please try again.', 'danger')
+        flash(f'Error placing order. Please try again: {e}', 'danger')
         return redirect(url_for('view_cart'))
 
     finally:
