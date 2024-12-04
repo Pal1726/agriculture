@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS Transaction (
     order_id INT,
     buyer_id INT,
     seller_id INT,
-    amount DECIMAL(10, 2) DEFAULT NULL,
+    
     transaction_date DATETIME NOT NULL,
     transaction_status VARCHAR(50) NOT NULL DEFAULT 'Completed',
     FOREIGN KEY (order_id) REFERENCES Orders(order_id),
@@ -116,7 +116,9 @@ CREATE TABLE IF NOT EXISTS BuyerAddress (
     FOREIGN KEY (buyer_id) REFERENCES Buyer(buyer_id) ON DELETE CASCADE,
     FOREIGN KEY (address_id) REFERENCES Address(address_id) ON DELETE CASCADE
 );
-s
+ALTER TABLE Transaction
+ADD UNIQUE (order_id,buyer_id, seller_id);
+
 
 
 
