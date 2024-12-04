@@ -2336,3 +2336,16 @@ section,
 #placeOrderButton a{
   color:white;
 }
+
+
+.blurred{
+  filter:blur(2px);
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.out-of-stock-label{
+  color: red;
+  font-weight: bold;
+  margin-top: 10px;
+}
