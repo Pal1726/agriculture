@@ -92,3 +92,37 @@ input[type="radio"] + label {
 nav{
     text-align: right;
 }
+
+/* Flash message container */
+.flash-messages {
+    margin-top: 20px;
+    padding: 10px;
+}
+
+/* General flash message styling */
+.flash-message {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Success message (green) */
+.flash-message.success {
+    background-color: #4CAF50; /* Green background for success */
+    color: white;
+}
+
+/* Error message (red) */
+.flash-message.error {
+    background-color: #f44336; /* Red background for error */
+    color: white;
+}
+
+/* Optionally, style for info messages */
+.flash-message.info {
+    background-color: #2196F3; /* Blue background for info */
+    color: white;
+}
