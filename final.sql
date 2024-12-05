@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS Seller (
 CREATE TABLE IF NOT EXISTS Product (
     product_id INT AUTO_INCREMENT PRIMARY KEY,
     product_title VARCHAR(255) NOT NULL,
-    product_stock DECIMAL(10, 2) NOT NULL,
+    product_stock INT NOT NULL,
     product_category_id INT,
     product_expiry DATE,
     product_image VARCHAR(255),
@@ -57,9 +57,12 @@ CREATE TABLE IF NOT EXISTS Cart (
     buyer_id INT,
     product_id INT,
     quantity INT NOT NULL,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (buyer_id, product_id),
     FOREIGN KEY (buyer_id) REFERENCES Buyer(buyer_id),
     FOREIGN KEY (product_id) REFERENCES Product(product_id)
 );
+
 
 
 
@@ -70,7 +73,7 @@ CREATE TABLE IF NOT EXISTS Orders (
     order_status VARCHAR(50) NOT NULL DEFAULT 'Pending',
     
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (buyer_id) REFERENCES Buyer(buyer_id),
+    FOREIGN KEY (buyer_id) REFERENCES Buyer(buyer_id)
     
 );
 
@@ -106,8 +109,7 @@ CREATE TABLE IF NOT EXISTS Payment (
     FOREIGN KEY (order_id) REFERENCES Orders(order_id)
 );
 
-ALTER TABLE Cart
-ADD UNIQUE (buyer_id, product_id);
+
 
 CREATE TABLE IF NOT EXISTS BuyerAddress (
     buyer_address_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -116,10 +118,10 @@ CREATE TABLE IF NOT EXISTS BuyerAddress (
     FOREIGN KEY (buyer_id) REFERENCES Buyer(buyer_id) ON DELETE CASCADE,
     FOREIGN KEY (address_id) REFERENCES Address(address_id) ON DELETE CASCADE
 );
-ALTER TABLE Transaction
-ADD UNIQUE (order_id,buyer_id, seller_id);
 
 
+
+ALTER TABLE Product ADD COLUMN is_active TINYINT(1) DEFAULT 1;
 
 
 
@@ -137,8 +139,6 @@ SET total_amount = (
 );
 
 
-UPDATE Transaction AS t
-JOIN Orders AS o ON t.order_id = o.order_id
-SET t.amount = o.total_amount;
+
 
 
