@@ -24,7 +24,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
-            flash("You need to be logged in to access this page.")
+            flash("You need to be logged in to access this page.",'info')
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
@@ -34,7 +34,7 @@ def role_required(role):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if session.get('role') != role:
-                flash("You don't have permission to access this page.")
+                flash("You don't have permission to access this page.",'info')
                 return redirect(url_for('index'))
             return f(*args, **kwargs)
         return decorated_function
@@ -258,7 +258,7 @@ def add_product():
         cursor.close()
         connection.close()
         
-        flash("Product added successfully!")
+        flash("Product added successfully!",'success')
         return redirect(url_for('my_products'))
 
     
@@ -402,7 +402,7 @@ def edit_product(product_id):
         cursor.close()
         connection.close()
         
-        flash("Product updated successfully!")
+        flash("Product updated successfully!",'success')
         return redirect(url_for('my_products'))
 
     else:
@@ -1260,7 +1260,7 @@ def order_confirmation(order_id):
 def logout():
     session.clear()
 
-    flash("You have been logged out.")
+    flash("You have been logged out.",'info')
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
