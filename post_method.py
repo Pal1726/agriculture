@@ -510,8 +510,6 @@ def seller_transactions():
 
 
 
-
-
 @app.route('/buyer_dashboard', methods=['GET', 'POST'])
 @login_required
 @role_required('buyer')
@@ -521,45 +519,76 @@ def buyer_dashboard():
     offset = (page - 1) * per_page
     search_query = request.args.get('search', '')  
 
-    
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    
-    count_query = """
-        SELECT COUNT(*) 
-        FROM Product
-        WHERE product_title LIKE %s
-    """
-    cursor.execute(count_query, ('%' + search_query + '%',))  
+    # If the search query is empty, fetch all products excluding expired ones
+    if search_query:
+        count_query = """
+            SELECT COUNT(*) 
+            FROM Product
+            WHERE product_title LIKE %s AND product_expiry >= CURDATE() AND is_active = 1
+        """
+        cursor.execute(count_query, ('%' + search_query + '%',))  
+    else:
+        count_query = """
+            SELECT COUNT(*) 
+            FROM Product
+            WHERE product_expiry >= CURDATE() AND is_active = 1
+        """
+        cursor.execute(count_query)
+
     total_products = cursor.fetchone()[0]  
     total_pages = ceil(total_products / per_page)
 
-    
-    
-    # Query to fetch paginated products with stock information
-    product_query = """
-        SELECT 
-            product_id, 
-            product_title, 
-            product_mrp, 
-            product_image, 
-            product_stock,
-            CASE 
-                WHEN product_stock = 0 THEN 1
-                ELSE 0
-            END AS is_out_of_stock
-        FROM Product
-        WHERE product_title LIKE %s
-        LIMIT %s OFFSET %s
-    """
-    cursor.execute(product_query, ('%' + search_query + '%', per_page, offset))
+    # Query to fetch paginated products with stock information, excluding expired ones
+    if search_query:
+        product_query = """
+            SELECT 
+                product_id, 
+                product_title, 
+                product_mrp, 
+                product_image, 
+                product_stock,
+                CASE 
+                    WHEN product_stock = 0 THEN 1
+                    ELSE 0
+                END AS is_out_of_stock
+            FROM Product
+            WHERE product_title LIKE %s AND product_expiry >= CURDATE() AND is_active = 1
+            LIMIT %s OFFSET %s
+        """
+        cursor.execute(product_query, ('%' + search_query + '%', per_page, offset))
+    else:
+        product_query = """
+            SELECT 
+                product_id, 
+                product_title, 
+                product_mrp, 
+                product_image, 
+                product_stock,
+                CASE 
+                    WHEN product_stock = 0 THEN 1
+                    ELSE 0
+                END AS is_out_of_stock
+            FROM Product
+            WHERE product_expiry >= CURDATE() AND is_active = 1
+            LIMIT %s OFFSET %s
+        """
+        cursor.execute(product_query, (per_page, offset))
+
     products = cursor.fetchall()
 
     cursor.close()
     connection.close()
 
-    return render_template('buyer_dashboard.html', products=products, current_page=page, total_pages=total_pages, search_query=search_query)
+    return render_template(
+        'buyer_dashboard.html', 
+        products=products, 
+        current_page=page, 
+        total_pages=total_pages, 
+        search_query=search_query
+    )
 
 @app.route('/buyer_dashboard/<int:product_id>')
 @login_required
@@ -694,7 +723,7 @@ def view_cart():
     current_time = datetime.now()
 
     for item in cart_items:
-        if current_time - item['added_at'] > timedelta(minutes=1):
+        if current_time - item['added_at'] > timedelta(minutes=100):
             # Restore stock if the item was added more than 10 minutes ago
             cursor.execute("""
                 SELECT product_stock
@@ -765,12 +794,21 @@ def update_cart_quantity(product_id):
     print(f"Max Stock: {max_stock}, Current Quantity: {current_quantity}")
 
     # Determine new quantity based on the action
-    if actions == 'increment' and current_quantity <= max_stock:
+    if actions == 'increment':
         new_quantity = current_quantity + 1
+        
     elif actions == 'decrement' and current_quantity > 1:
         new_quantity = current_quantity - 1
     else:
         new_quantity = current_quantity
+
+    # Update the cart quantity
+    cursor.execute("""
+        UPDATE Cart
+        SET quantity = %s
+        WHERE buyer_id = %s AND product_id = %s
+    """, (new_quantity, buyer_id, product_id))
+    connection.commit()
 
     # Prevent overstock or understock logic error
     stock_difference = new_quantity - current_quantity
@@ -791,13 +829,7 @@ def update_cart_quantity(product_id):
             WHERE product_id = %s
         """, (-stock_difference, product_id))
 
-    # Update the cart quantity
-    cursor.execute("""
-        UPDATE Cart
-        SET quantity = %s
-        WHERE buyer_id = %s AND product_id = %s
-    """, (new_quantity, buyer_id, product_id))
-    connection.commit()
+    
 
     cursor.close()
     connection.close()
@@ -1162,8 +1194,13 @@ def order_summary(order_id):
 @login_required
 @role_required('buyer')
 def view_orders():
+    # Get the current page number, default is 1
+    page = request.args.get('page', 1, type=int)
+    per_page = 6  # Number of orders per page
+    offset = (page - 1) * per_page
     buyer_id = session.get('user_id')
 
+    # Check if the user is logged in
     if not buyer_id:
         flash('Please log in to view your orders.', 'warning')
         return redirect(url_for('buyer_login'))
@@ -1171,6 +1208,16 @@ def view_orders():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
+    # Get the total number of orders for the buyer
+    cursor.execute("""
+    SELECT COUNT(*) AS total_orders
+    FROM Orders
+    WHERE buyer_id = %s
+    """, (buyer_id,))
+    total_orders = cursor.fetchone()['total_orders']  
+    total_pages = ceil(total_orders / per_page)  # Calculate total pages
+
+    # Fetch paginated orders
     cursor.execute("""
     SELECT o.order_id, o.total_amount, o.created_at, o.order_status, 
            p.payment_method, p.payment_status
@@ -1178,13 +1225,21 @@ def view_orders():
     LEFT JOIN Payment p ON o.order_id = p.order_id
     WHERE o.buyer_id = %s
     ORDER BY o.created_at DESC
-    """, (buyer_id,))
+    LIMIT %s OFFSET %s
+    """, (buyer_id, per_page, offset))
     orders = cursor.fetchall()
 
     cursor.close()
     connection.close()
 
-    return render_template('view_orders.html', orders=orders)
+    return render_template(
+        'view_orders.html', 
+        orders=orders, 
+        current_page=page, 
+        total_pages=total_pages,
+        per_page=per_page
+    )
+
 
 @app.route('/order_confirmation/<int:order_id>', methods=['GET'])
 @login_required
