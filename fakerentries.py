@@ -115,7 +115,8 @@ if get_record_count("Product") < num_records:
         else:
             continue  # Skip if the product title doesn't match any category
 
-        product_stock = round(random.uniform(1, 100), 2)
+        product_stock = random.randint(1, 100)
+
         product_expiry = fake.date_between(start_date='today', end_date='+1y')
         product_image = fake.image_url()
         product_mrp = round(random.uniform(1, 100), 2)
@@ -156,6 +157,16 @@ if get_record_count("Buyer") < num_records:
 
 connection.commit()
 
+# BuyerAddress
+if get_record_count("BuyerAddress") < num_records:
+    for buyer_id in buyer_ids:
+        address_id = random.choice(address_ids)
+        cursor.execute("""
+            INSERT INTO BuyerAddress (buyer_id, address_id) 
+            VALUES (%s, %s)
+        """, (buyer_id, address_id))
+connection.commit()
+
 #cart
 if get_record_count("Cart") < num_records:
     for _ in range(100):
@@ -170,34 +181,21 @@ if get_record_count("Cart") < num_records:
 
 connection.commit()
 
-#shipping
-if get_record_count("Shipping") < num_records:
-    shipping_ids=[]
-    for _ in range(100):
-        address_id = random.choice(address_ids)  
-        delivery_date = fake.date_time_between(start_date='now', end_date='+1y')
-        status = random.choice(['Pending', 'Completed', 'Failed'])
-        cursor.execute("""
-            INSERT INTO Shipping (address_id, delivery_date,status) 
-            VALUES (%s, %s,%s)
-        """, (address_id, delivery_date,status))
-        shipping_ids.append(cursor.lastrowid)
 
-connection.commit()
 
 #orders
 if get_record_count("Orders") < num_records:
     order_ids = []
     for _ in range(100):
         buyer_id = random.choice(buyer_ids)  
-        shipping_id = random.choice(shipping_ids)
-        # shipping_id = random.choice(range(1, 101)) 
+        
+        
         
     
         cursor.execute("""
-            INSERT INTO Orders (buyer_id, shipping_id) 
-            VALUES (%s, %s)
-        """, (buyer_id, shipping_id))
+            INSERT INTO Orders (buyer_id) 
+            VALUES (%s)
+        """, (buyer_id,))
         order_ids.append(cursor.lastrowid)
 
 connection.commit()
@@ -223,7 +221,7 @@ if get_record_count("Transaction") < num_records:
         order_id = random.choice(order_ids) 
         buyer_id = random.choice(buyer_ids)  
         seller_id = random.choice(seller_ids)  
-        # amount = round(random.uniform(1, 500), 2) 
+        
         transaction_date = fake.date_time_this_year()
         transaction_status = random.choice(['Completed', 'Pending', 'Failed'])
     
