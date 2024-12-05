@@ -517,78 +517,54 @@ def buyer_dashboard():
     page = request.args.get('page', 1, type=int)
     per_page = 9  
     offset = (page - 1) * per_page
-    search_query = request.args.get('search', '')  
+    search_query = request.args.get('search', '')
 
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    # If the search query is empty, fetch all products excluding expired ones
-    if search_query:
-        count_query = """
-            SELECT COUNT(*) 
-            FROM Product
-            WHERE product_title LIKE %s AND product_expiry >= CURDATE() AND is_active = 1
-        """
-        cursor.execute(count_query, ('%' + search_query + '%',))  
-    else:
-        count_query = """
-            SELECT COUNT(*) 
-            FROM Product
-            WHERE product_expiry >= CURDATE() AND is_active = 1
-        """
-        cursor.execute(count_query)
+    # Use a parameterized query that includes a wildcard search condition for both cases
+    search_pattern = f"%{search_query}%" if search_query else "%"
 
-    total_products = cursor.fetchone()[0]  
+    # Count query
+    count_query = """
+        SELECT COUNT(*) 
+        FROM Product
+        WHERE product_title LIKE %s AND product_expiry >= CURDATE() AND is_active = 1
+    """
+    cursor.execute(count_query, (search_pattern,))
+    total_products = cursor.fetchone()[0]
     total_pages = ceil(total_products / per_page)
 
-    # Query to fetch paginated products with stock information, excluding expired ones
-    if search_query:
-        product_query = """
-            SELECT 
-                product_id, 
-                product_title, 
-                product_mrp, 
-                product_image, 
-                product_stock,
-                CASE 
-                    WHEN product_stock = 0 THEN 1
-                    ELSE 0
-                END AS is_out_of_stock
-            FROM Product
-            WHERE product_title LIKE %s AND product_expiry >= CURDATE() AND is_active = 1
-            LIMIT %s OFFSET %s
-        """
-        cursor.execute(product_query, ('%' + search_query + '%', per_page, offset))
-    else:
-        product_query = """
-            SELECT 
-                product_id, 
-                product_title, 
-                product_mrp, 
-                product_image, 
-                product_stock,
-                CASE 
-                    WHEN product_stock = 0 THEN 1
-                    ELSE 0
-                END AS is_out_of_stock
-            FROM Product
-            WHERE product_expiry >= CURDATE() AND is_active = 1
-            LIMIT %s OFFSET %s
-        """
-        cursor.execute(product_query, (per_page, offset))
-
+    # Product query
+    product_query = """
+        SELECT 
+            product_id, 
+            product_title, 
+            product_mrp, 
+            product_image, 
+            product_stock,
+            CASE 
+                WHEN product_stock = 0 THEN 1
+                ELSE 0
+            END AS is_out_of_stock
+        FROM Product
+        WHERE product_title LIKE %s AND product_expiry >= CURDATE() AND is_active = 1
+        LIMIT %s OFFSET %s
+    """
+    cursor.execute(product_query, (search_pattern, per_page, offset))
     products = cursor.fetchall()
 
     cursor.close()
     connection.close()
 
     return render_template(
-        'buyer_dashboard.html', 
-        products=products, 
-        current_page=page, 
-        total_pages=total_pages, 
+        'buyer_dashboard.html',
+        products=products,
+        current_page=page,
+        total_pages=total_pages,
         search_query=search_query
     )
+
 
 @app.route('/buyer_dashboard/<int:product_id>')
 @login_required
@@ -723,7 +699,7 @@ def view_cart():
     current_time = datetime.now()
 
     for item in cart_items:
-        if current_time - item['added_at'] > timedelta(minutes=100):
+        if current_time - item['added_at'] > timedelta(minutes=10):
             # Restore stock if the item was added more than 10 minutes ago
             cursor.execute("""
                 SELECT product_stock
@@ -794,7 +770,7 @@ def update_cart_quantity(product_id):
     print(f"Max Stock: {max_stock}, Current Quantity: {current_quantity}")
 
     # Determine new quantity based on the action
-    if actions == 'increment':
+    if actions == 'increment' and 0 < max_stock:
         new_quantity = current_quantity + 1
         
     elif actions == 'decrement' and current_quantity > 1:
@@ -802,14 +778,7 @@ def update_cart_quantity(product_id):
     else:
         new_quantity = current_quantity
 
-    # Update the cart quantity
-    cursor.execute("""
-        UPDATE Cart
-        SET quantity = %s
-        WHERE buyer_id = %s AND product_id = %s
-    """, (new_quantity, buyer_id, product_id))
-    connection.commit()
-
+    
     # Prevent overstock or understock logic error
     stock_difference = new_quantity - current_quantity
     if stock_difference > 0:  # Increment case
@@ -828,6 +797,14 @@ def update_cart_quantity(product_id):
             SET product_stock = product_stock + %s
             WHERE product_id = %s
         """, (-stock_difference, product_id))
+
+    # Update the cart quantity
+    cursor.execute("""
+        UPDATE Cart
+        SET quantity = %s
+        WHERE buyer_id = %s AND product_id = %s
+    """, (new_quantity, buyer_id, product_id))
+    connection.commit()
 
     
 
