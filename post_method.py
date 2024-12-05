@@ -778,6 +778,8 @@ def update_cart_quantity(product_id):
     else:
         new_quantity = current_quantity
 
+    print(f"new_quantity:{new_quantity}")
+
     
     # Prevent overstock or understock logic error
     stock_difference = new_quantity - current_quantity
@@ -1173,7 +1175,7 @@ def order_summary(order_id):
 def view_orders():
     # Get the current page number, default is 1
     page = request.args.get('page', 1, type=int)
-    per_page = 6  # Number of orders per page
+    per_page = 10  # Number of orders per page
     offset = (page - 1) * per_page
     buyer_id = session.get('user_id')
 
