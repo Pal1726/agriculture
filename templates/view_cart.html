@@ -119,18 +119,17 @@
         <td>
             <form method="POST" action="{{ url_for('update_cart_quantity', product_id=item.product_id) }}" class="d-inline">
                 <button type="submit" name="action" value="decrement" class="btn btn-sm btn-secondary" {% if item.quantity <= 1 %}disabled{% endif %}>-</button>
-                   {{item.quantity}}
+                  
                 <input 
                     type="number" 
                     name="quantity" 
                     value="{{ item.quantity }}" 
                     min="1" 
-                   
                     max="{{ item.product_stock }}" 
                     readonly 
                     class="form-control d-inline-block" 
                     style="width: 80px; text-align: center;">
-                <button type="submit" name="action" value="increment" class="btn btn-sm btn-secondary" {% if item.quantity >= item.product_stock %}disabled{% endif %}>+</button>
+                <button type="submit" name="action" value="increment" class="btn btn-sm btn-secondary" {% if 0 >= item.product_stock %}disabled{% endif %}>+</button>
             </form>
         </td>
         <td>{{ item.product_mrp }}</td>
