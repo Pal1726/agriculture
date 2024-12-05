@@ -284,22 +284,39 @@ def my_products():
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    # Query to get the total count of products for the seller
+    # Mark expired products as inactive instead of deleting them
+    # This avoids foreign key issues and allows for product data retention
+    update_expired_query = """
+        UPDATE Product
+        SET is_active = 0
+        WHERE seller_id = %s AND product_expiry <= CURDATE()
+    """
+    seller_id = session.get('user_id')
+    try:
+        cursor.execute(update_expired_query, (seller_id,))
+        connection.commit()
+    except mysql.connector.Error as err:
+        connection.rollback()
+        # Handle the error (optional: log or flash a message)
+        print(f"Error occurred: {err}")
+
+
+    # Query to get the total count of products for the seller,excluding inactive products
     count_query = """
         SELECT COUNT(*) 
         FROM Product
-        WHERE seller_id = %s
+        WHERE seller_id = %s AND is_active = 1
     """
-    seller_id = session.get('user_id')  
+     
     cursor.execute(count_query, (seller_id,))
     total_products = cursor.fetchone()[0]  
     total_pages = ceil(total_products / per_page)  
 
-    # Query to get the products for the current page
+    # Query to get the products for the current page,excluding inactive products
     product_query = """
         SELECT product_id, product_title, product_mrp, product_image 
         FROM Product
-        WHERE seller_id = %s
+        WHERE seller_id = %s AND is_active = 1
         LIMIT %s OFFSET %s
     """
     cursor.execute(product_query, (seller_id, per_page, offset))
@@ -671,12 +688,13 @@ def view_cart():
         WHERE c.buyer_id = %s
     """, (buyer_id,))
     cart_items = cursor.fetchall()
+   
     
     # Check for items added more than 10 minutes ago and restore stock if necessary
     current_time = datetime.now()
 
     for item in cart_items:
-        if current_time - item['added_at'] > timedelta(minutes=10):
+        if current_time - item['added_at'] > timedelta(minutes=1):
             # Restore stock if the item was added more than 10 minutes ago
             cursor.execute("""
                 SELECT product_stock
@@ -685,6 +703,7 @@ def view_cart():
             """, (item['product_id'],))
             product = cursor.fetchone()
             new_stock = product['product_stock'] + item['quantity']
+
             cursor.execute("""
                 UPDATE Product
                 SET product_stock = %s
@@ -731,35 +750,46 @@ def update_cart_quantity(product_id):
         WHERE c.buyer_id = %s AND c.product_id = %s
     """, (buyer_id, product_id))
     cart_item = cursor.fetchone()
+    print("cart_items",cart_item)
 
     if not cart_item:
         flash('Item not found in cart.', 'danger')
         return redirect(url_for('view_cart'))
 
     current_quantity = cart_item['quantity']
-    max_stock = cart_item['product_stock']
+    max_stock = cart_item['product_stock']  
+     
+
+    
+    # Debugging information
+    print(f"Max Stock: {max_stock}, Current Quantity: {current_quantity}")
 
     # Determine new quantity based on the action
-    if actions == 'increment' and current_quantity < max_stock:
+    if actions == 'increment' and current_quantity <= max_stock:
         new_quantity = current_quantity + 1
     elif actions == 'decrement' and current_quantity > 1:
         new_quantity = current_quantity - 1
     else:
         new_quantity = current_quantity
 
-    # Adjust stock before updating cart
-    if new_quantity > current_quantity:
+    # Prevent overstock or understock logic error
+    stock_difference = new_quantity - current_quantity
+    if stock_difference > 0:  # Increment case
+        if stock_difference <= max_stock:  # Ensure within stock
+            cursor.execute("""
+                UPDATE Product
+                SET product_stock = product_stock - %s
+                WHERE product_id = %s
+            """, (stock_difference, product_id))
+        else:
+            flash('Not enough stock available.', 'danger')
+            return redirect(url_for('view_cart'))
+    elif stock_difference < 0:  # Decrement case
         cursor.execute("""
             UPDATE Product
-            SET product_stock = product_stock - 1
+            SET product_stock = product_stock + %s
             WHERE product_id = %s
-        """, (product_id,))
-    elif new_quantity < current_quantity:
-        cursor.execute("""
-            UPDATE Product
-            SET product_stock = product_stock + 1
-            WHERE product_id = %s
-        """, (product_id,))
+        """, (-stock_difference, product_id))
 
     # Update the cart quantity
     cursor.execute("""
@@ -774,8 +804,6 @@ def update_cart_quantity(product_id):
 
     flash('Cart updated successfully.', 'success')
     return redirect(url_for('view_cart'))
-
-
 
 @app.route('/delete_from_cart/<int:product_id>', methods=['POST'])
 @login_required
@@ -898,12 +926,12 @@ def checkout():
                 VALUES (%s, %s, %s, %s)
                 """, (order_id, item['product_id'], item['quantity'], item['subtotal']))
     
-                # Update the product stock after placing the order
-                cursor.execute("""
-                UPDATE Product
-                SET product_stock = product_stock - %s
-                WHERE product_id = %s
-                """, (item['quantity'], item['product_id']))
+                # # Update the product stock after placing the order
+                # cursor.execute("""
+                # UPDATE Product
+                # SET product_stock = product_stock - %s
+                # WHERE product_id = %s
+                # """, (item['quantity'], item['product_id']))
     
             # Step 3: Insert into Transaction table
             for item in cart_items:
