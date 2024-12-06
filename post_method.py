@@ -880,16 +880,16 @@ def checkout():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    # Fetch the buyer address
-    cursor.execute("""
-    SELECT * FROM Address 
-    WHERE address_id = (SELECT address_id FROM Buyer WHERE buyer_id = %s)
-    """, (buyer_id,))
-    existing_address = cursor.fetchone()
+    # # # Fetch the buyer address
+    # cursor.execute("""
+    # SELECT * FROM Address 
+    # WHERE address_id = (SELECT address_id FROM Buyer WHERE buyer_id = %s)
+    # """, (buyer_id,))
+    # existing_address = cursor.fetchone()
 
-    if not existing_address:
-        flash('Please add a delivery address before placing an order.', 'warning')
-        return redirect(url_for('add_address'))
+    # if not existing_address:
+    #     flash('Please add a delivery address before placing an order.', 'warning')
+    #     return redirect(url_for('add_address'))
 
     try:
         # Fetch cart items
@@ -912,8 +912,20 @@ def checkout():
             flash('Your cart is empty. Add products to the cart before proceeding.', 'warning')
             return redirect(url_for('view_cart'))
 
+
         # Calculate total amount
         total_amount = sum(item['subtotal'] for item in cart_items) if cart_items else 0
+
+        # Fetch the buyer address
+        cursor.execute("""
+        SELECT * FROM Address 
+        WHERE address_id = (SELECT address_id FROM Buyer WHERE buyer_id = %s)
+        """, (buyer_id,))
+        existing_address = cursor.fetchone()
+    
+        if not existing_address:
+            flash('Please add a delivery address before placing an order.', 'warning')
+            return redirect(url_for('add_address'))
 
         if request.method == 'POST':
             # Step 1: Insert into Orders table
@@ -926,7 +938,9 @@ def checkout():
             # Step 2: Insert items into OrderItem table 
             order_item_ids = []
             for item in cart_items:
-                if item['quantity'] > item['product_stock']:
+                if 0 > item['product_stock']:
+                    # print('item quantity',item['quantity'])
+                    # print('item product_stock',item['product_stock'])
                     flash(f"Insufficient stock for {item['product_title']}.", 'danger')
                     return redirect(url_for('checkout'))
 
