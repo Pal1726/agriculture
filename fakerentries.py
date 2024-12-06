@@ -218,7 +218,7 @@ connection.commit()
 # Transactions
 if get_record_count("Transaction") < num_records:
     for _ in range(100):
-        order_id = random.choice(order_ids) 
+        order_item_id = random.choice(order_ids) 
         buyer_id = random.choice(buyer_ids)  
         seller_id = random.choice(seller_ids)  
         
@@ -226,9 +226,9 @@ if get_record_count("Transaction") < num_records:
         transaction_status = random.choice(['Completed', 'Pending', 'Failed'])
     
         cursor.execute("""
-            INSERT INTO Transaction (order_id, buyer_id, seller_id, transaction_date, transaction_status) 
+            INSERT INTO Transaction (order_item_id, buyer_id, seller_id, transaction_date, transaction_status) 
             VALUES (%s, %s, %s, %s, %s)
-        """, (order_id, buyer_id, seller_id, transaction_date, transaction_status))
+        """, (order_item_id, buyer_id, seller_id, transaction_date, transaction_status))
 
 connection.commit()
 
