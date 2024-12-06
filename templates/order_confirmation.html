@@ -12,8 +12,21 @@
   
 
     <div class="container mt-5 text-center">
-        <h1 class="display-4 text-success">🎉 Order Placed Successfully! 🎉</h1>
-        <p class="lead">Thank you for shopping with us. Your order has been placed successfully.</p>
+    <h1 class="display-4 {% if order.payment_status == 'Completed' %}text-success{% else %}text-warning{% endif %}">
+        {% if order.payment_status == 'Completed' %}
+            🎉 Order Placed Successfully! 🎉
+        {% else %}
+            ⚠️ Payment Pending ⚠️
+        {% endif %}
+    </h1>
+    <p class="lead">
+        {% if order.payment_status == 'Completed' %}
+            Thank you for shopping with us. Your order has been placed successfully.
+        {% else %}
+            Order placed. Payment is pending. Please pay upon delivery.
+        {% endif %}
+    </p>
+</div>
 
         <div class="card mt-4">
     <div class="card-body">
