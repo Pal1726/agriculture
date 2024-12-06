@@ -90,16 +90,16 @@ CREATE TABLE IF NOT EXISTS OrderItem (
 
 CREATE TABLE IF NOT EXISTS Transaction (
     transaction_id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id INT,
+    order_item_id INT,                      
     buyer_id INT,
     seller_id INT,
-    
     transaction_date DATETIME NOT NULL,
     transaction_status VARCHAR(50) NOT NULL DEFAULT 'Completed',
-    FOREIGN KEY (order_id) REFERENCES Orders(order_id),
-    FOREIGN KEY (buyer_id) REFERENCES Buyer(buyer_id),
+    FOREIGN KEY (order_item_id) REFERENCES OrderItem(order_item_id), 
+    FOREIGN KEY (buyer_id) REFERENCES Buyer(buyer_id),   
     FOREIGN KEY (seller_id) REFERENCES Seller(seller_id)
 );
+
 
 CREATE TABLE IF NOT EXISTS Payment (
     payment_id INT AUTO_INCREMENT PRIMARY KEY,
