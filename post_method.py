@@ -459,7 +459,6 @@ def delete_product(product_id):
 @role_required('seller')
 def seller_transactions():
     seller_id = session.get('user_id')
-    print("seller id=",seller_id)
     
     if not seller_id:
         flash('Please log in to view your transactions.', 'warning')
@@ -469,36 +468,35 @@ def seller_transactions():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     
-    # Query to fetch transactions
+    # Query to fetch transactions including payment status
     cursor.execute("""
-    SELECT DISTINCT
-        t.transaction_id,
-        t.transaction_date,
-        t.transaction_status,
-        b.buyer_id,
-        b.name AS name,
-        
-        p.product_title,
-        SUM(oi.quantity) AS total_quantity,
-        SUM(oi.total_price) AS total_price
-        
-    FROM 
-        Transaction t
-    JOIN 
-        Orders o ON t.order_id = o.order_id
-    JOIN 
-        OrderItem oi ON o.order_id = oi.order_id
-    JOIN 
-        Product p ON oi.product_id = p.product_id
-    JOIN 
-        Buyer b ON o.buyer_id = b.buyer_id
-    WHERE 
-        p.seller_id = %s
-    GROUP BY 
-        t.transaction_id, t.transaction_date, t.transaction_status, b.buyer_id, b.name, p.product_title
-    ORDER BY 
-        t.transaction_date DESC
+        SELECT 
+            t.transaction_id,
+            t.transaction_date,
+            t.transaction_status,
+            b.name AS buyer_name,
+            p.product_title,
+            oi.quantity AS total_quantity,
+            oi.total_price,
+            pm.payment_method
+        FROM 
+            Transaction t
+        JOIN 
+            OrderItem oi ON t.order_item_id = oi.order_item_id
+        JOIN 
+            Orders o ON oi.order_id = o.order_id
+        JOIN 
+            Product p ON oi.product_id = p.product_id
+        JOIN 
+            Buyer b ON o.buyer_id = b.buyer_id
+        JOIN 
+            Payment pm ON o.order_id = pm.order_id
+        WHERE 
+            p.seller_id = %s
+        ORDER BY 
+            t.transaction_date DESC
     """, (seller_id,))
+
 
     transactions = cursor.fetchall()
     
@@ -894,7 +892,7 @@ def checkout():
         return redirect(url_for('add_address'))
 
     try:
-        # Query to fetch cart items, product stock, and delivery availability
+        # Fetch cart items
         cursor.execute("""
         SELECT 
             c.product_id,
@@ -909,70 +907,76 @@ def checkout():
         WHERE c.buyer_id = %s
         """, (buyer_id,))
         cart_items = cursor.fetchall()
-    
+
         if not cart_items:
             flash('Your cart is empty. Add products to the cart before proceeding.', 'warning')
             return redirect(url_for('view_cart'))
-    
+
         # Calculate total amount
         total_amount = sum(item['subtotal'] for item in cart_items) if cart_items else 0
-    
+
         if request.method == 'POST':
             # Step 1: Insert into Orders table
             cursor.execute("""
             INSERT INTO Orders (buyer_id, total_amount, order_status, created_at)
-            VALUES (%s, %s, 'Completed', NOW())
+            VALUES (%s, %s, 'Pending', NOW())
             """, (buyer_id, total_amount))
             order_id = cursor.lastrowid  # Get the generated order_id
-    
-            # Step 2: Insert into OrderItem table and update product stock
+
+            # Step 2: Insert items into OrderItem table 
+            order_item_ids = []
             for item in cart_items:
                 if item['quantity'] > item['product_stock']:
                     flash(f"Insufficient stock for {item['product_title']}.", 'danger')
                     return redirect(url_for('checkout'))
-    
-                # Insert item into OrderItem table
+
                 cursor.execute("""
                 INSERT INTO OrderItem (order_id, product_id, quantity, total_price)
                 VALUES (%s, %s, %s, %s)
                 """, (order_id, item['product_id'], item['quantity'], item['subtotal']))
-    
-                # # Update the product stock after placing the order
-                # cursor.execute("""
-                # UPDATE Product
-                # SET product_stock = product_stock - %s
-                # WHERE product_id = %s
-                # """, (item['quantity'], item['product_id']))
-    
-            # Step 3: Insert into Transaction table
-            for item in cart_items:
-                print(f"Processing transaction for Product ID: {item['product_id']}, Buyer ID: {buyer_id}, Seller ID: {item['seller_id']}")
-                cursor.execute("""
-                INSERT INTO Transaction (order_id, buyer_id, seller_id, transaction_date, transaction_status)
-                VALUES (%s, %s, %s, NOW(), 'Completed')
-                """, (order_id, buyer_id, item['seller_id']))
-    
-            # Step 4: Insert payment details into Payment table
+                order_item_id = cursor.lastrowid
+                order_item_ids.append((order_item_id, item['seller_id']))
+
+            # Step 3: Insert payment details into Payment table
             payment_status = 'Completed' if payment_method in ['UPI', 'Credit Card', 'Debit Card'] else 'Pending'
             cursor.execute("""
             INSERT INTO Payment (order_id, payment_method, payment_status)
             VALUES (%s, %s, %s)
             """, (order_id, payment_method, payment_status))
-    
-            # Step 5: Empty the Cart
+
+            # Step 4: Insert into Transaction table
+            for order_item_id, seller_id in order_item_ids:
+                transaction_status = 'Completed' if payment_status == 'Completed' else 'Pending Payment'
+                cursor.execute("""
+                INSERT INTO Transaction (order_item_id, buyer_id, seller_id, transaction_date, transaction_status)
+                VALUES (%s, %s, %s, NOW(), %s)
+                """, (order_item_id, buyer_id, seller_id, transaction_status))
+
+            # Step 5: Update Orders table status
+            order_status = 'Completed' if payment_status == 'Completed' else 'Pending Payment'
+            cursor.execute("""
+            UPDATE Orders
+            SET order_status = %s
+            WHERE order_id = %s
+            """, (order_status, order_id))
+
+            # Step 6: Empty the Cart
             cursor.execute("""
             DELETE FROM Cart WHERE buyer_id = %s
             """, (buyer_id,))
-    
-            # Commit the changes to the database
+
+            # Commit the transaction
             connection.commit()
-    
-            flash('Your order has been placed successfully!', 'success')
-            
+
+            if payment_status == 'Completed':
+                flash('Your order has been placed successfully!', 'success')
+            else:
+                flash('Order placed. Payment is pending. Please pay upon delivery.', 'info')
+
             return redirect(url_for('order_confirmation', order_id=order_id))
 
     except Exception as e:
-        # Rollback the transaction in case of an error
+        # Rollback in case of error
         connection.rollback()
         flash(f'Error placing order. Please try again: {e}', 'danger')
         return redirect(url_for('view_cart'))
