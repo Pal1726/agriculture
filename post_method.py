@@ -99,7 +99,7 @@ def buyer_login():
             session['user_id'] = user['buyer_id']  
             session['role'] = 'buyer'
             # print(session)
-            flash("Login successful!","success")
+            # flash("Login successful!","success")
             return redirect(url_for('buyer_dashboard'))
         else:
             flash("Invalid credentials!","error")
@@ -125,7 +125,7 @@ def seller_login():
         if user and check_password_hash(user['password'], password):
             session['user_id'] = user['seller_id'] 
             session['role'] = 'seller'
-            flash("Login successful!", "success")  
+            # flash("Login successful!", "success")  
             return redirect(url_for('my_products'))
         else:
             flash("Invalid credentials!", "error")  
