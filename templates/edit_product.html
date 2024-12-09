@@ -7,24 +7,21 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='post_method.css') }}">
 </head>
 <body>
-    <div class="container mt-3">
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div>
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
-</div>
+    
 
         
        <form method="POST" enctype="multipart/form-data" action="{{ url_for('edit_product', product_id=product['product_id']) }}">
     <h2>Edit Product</h2>
+     
+{% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
     
     <!-- Product Title -->
     <label for="title">Product Title:</label>
