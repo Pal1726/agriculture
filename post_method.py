@@ -246,7 +246,16 @@ def add_product():
         image_filename = image.filename
         if image:
             image.save(os.path.join('static/uploads', image_filename))
+
         seller_id = session.get('user_id') 
+
+        # Check for expiry
+        if expiry:
+            expiry_date = datetime.strptime(expiry, '%Y-%m-%d')
+            if expiry_date < datetime.now():
+                flash("Product cannot be added as it is expired.", 'error')
+                return redirect(url_for('add_product'))
+                
         connection = get_db_connection()
         cursor = connection.cursor()
         cursor.execute("""
