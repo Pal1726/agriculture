@@ -1010,6 +1010,8 @@ def checkout():
 
     return render_template('checkout.html', cart_items=cart_items, total_amount=total_amount, existing_address=existing_address)
 
+
+
 @app.route('/add_address', methods=['GET', 'POST'])
 @login_required
 @role_required('buyer')
@@ -1031,28 +1033,51 @@ def add_address():
         connection = get_db_connection()
         cursor = connection.cursor()
 
-        # Insert the new address into the Address table
+        # Check if the address already exists in the Address table
         cursor.execute("""
-            INSERT INTO Address (street, city, region, pincode, country)
-            VALUES (%s, %s, %s, %s, %s)
+            SELECT address_id FROM Address
+            WHERE REPLACE(street, ' ', '') = REPLACE(%s, ' ', '')
+            AND REPLACE(city, ' ', '') = REPLACE(%s, ' ', '')
+            AND REPLACE(region, ' ', '') = REPLACE(%s, ' ', '')
+            AND REPLACE(pincode, ' ', '') = REPLACE(%s, ' ', '')
+            AND REPLACE(country, ' ', '') = REPLACE(%s, ' ', '')
         """, (street, city, region, pincode, country))
-        address_id = cursor.lastrowid  # Get the newly inserted address ID
+        address = cursor.fetchone()
 
-        # Link the address with the buyer in the BuyerAddress table
+
+        if address:
+            address_id = address[0]  # Access the address_id of the existing address
+        else:
+            # Insert the new address into the Address table
+            cursor.execute("""
+                INSERT INTO Address (street, city, region, pincode, country)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (street, city, region, pincode, country))
+            address_id = cursor.lastrowid  # Get the newly inserted address ID
+
+        # Check if the buyer has already linked this address
         cursor.execute("""
-            INSERT INTO BuyerAddress (buyer_id, address_id)
-            VALUES (%s, %s)
+            SELECT * FROM BuyerAddress
+            WHERE buyer_id = %s AND address_id = %s
         """, (buyer_id, address_id))
+        existing_link = cursor.fetchone()
 
-        connection.commit()
+        if existing_link:
+            flash('You have already added this address.', 'warning')
+        else:
+            # Link the address with the buyer in the BuyerAddress table
+            cursor.execute("""
+                INSERT INTO BuyerAddress (buyer_id, address_id)
+                VALUES (%s, %s)
+            """, (buyer_id, address_id))
+            connection.commit()
+            flash('Address added successfully!', 'success')
+
         cursor.close()
         connection.close()
-
-        flash('Address added successfully!', 'success')
         return redirect(url_for('addresses'))
 
     return render_template('add_address.html')
-
 
 
 @app.route('/addresses', methods=['GET'])
@@ -1077,7 +1102,12 @@ def addresses():
     cursor.close()
     connection.close()
 
-    return render_template('addresses.html', addresses=addresses)
+    # Check if the buyer has a default address
+    has_default_address = any(address['is_default'] for address in addresses)
+
+    return render_template('addresses.html', addresses=addresses,has_default_address=has_default_address)
+
+
 
 @app.route('/set_default_address/<int:address_id>', methods=['POST'])
 @login_required
@@ -1087,7 +1117,14 @@ def set_default_address(address_id):
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    # Update the default address for the buyer
+    # First, set all other addresses to non-default
+    cursor.execute("""
+        UPDATE Buyer
+        SET address_id = NULL
+        WHERE buyer_id = %s
+    """, (buyer_id,))
+
+    # Now, set the new default address
     cursor.execute("""
         UPDATE Buyer
         SET address_id = %s
@@ -1100,7 +1137,6 @@ def set_default_address(address_id):
 
     flash('Default address updated successfully.', 'success')
     return redirect(url_for('addresses'))
-
 
 @app.route('/edit_address/<int:address_id>', methods=['GET', 'POST'])
 @login_required
@@ -1145,6 +1181,50 @@ def edit_address(address_id):
     connection.close()
 
     return render_template('edit_address.html', address=address)
+
+@app.route('/delete_address/<int:address_id>', methods=['POST'])
+@login_required
+@role_required('buyer')
+def delete_address(address_id):
+    buyer_id = session.get('user_id')
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    # Check if the address to be deleted is the default address
+    cursor.execute("""
+        SELECT address_id
+        FROM Buyer
+        WHERE buyer_id = %s AND address_id = %s
+    """, (buyer_id, address_id))
+
+    default_address = cursor.fetchone()
+
+    if default_address:
+        # If the address to be deleted is the default address, prompt the user to set a new default
+        flash('You cannot delete your default address. Please set a new default address first.', 'warning')
+        cursor.close()
+        connection.close()
+        return redirect(url_for('addresses'))
+
+    # Remove the link between the buyer and the address in BuyerAddress
+    cursor.execute("""
+        DELETE FROM BuyerAddress
+        WHERE buyer_id = %s AND address_id = %s
+    """, (buyer_id, address_id))
+
+    # Delete the address from the Address table
+    cursor.execute("""
+        DELETE FROM Address
+        WHERE address_id = %s
+    """, (address_id,))
+
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+    flash('Address deleted successfully!', 'success')
+    return redirect(url_for('addresses'))
+
 
 @app.route('/order_summary/<int:order_id>', methods=['GET'])
 @login_required
