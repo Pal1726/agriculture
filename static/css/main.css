@@ -2349,3 +2349,9 @@ section,
   font-weight: bold;
   margin-top: 10px;
 }
+
+
+
+.card-text{
+  font-weight: bold;
+}
