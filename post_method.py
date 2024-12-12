@@ -1010,8 +1010,6 @@ def checkout():
 
     return render_template('checkout.html', cart_items=cart_items, total_amount=total_amount, existing_address=existing_address)
 
-
-
 @app.route('/add_address', methods=['GET', 'POST'])
 @login_required
 @role_required('buyer')
@@ -1043,7 +1041,6 @@ def add_address():
             AND REPLACE(country, ' ', '') = REPLACE(%s, ' ', '')
         """, (street, city, region, pincode, country))
         address = cursor.fetchone()
-
 
         if address:
             address_id = address[0]  # Access the address_id of the existing address
@@ -1105,8 +1102,7 @@ def addresses():
     # Check if the buyer has a default address
     has_default_address = any(address['is_default'] for address in addresses)
 
-    return render_template('addresses.html', addresses=addresses,has_default_address=has_default_address)
-
+    return render_template('addresses.html', addresses=addresses, has_default_address=has_default_address)
 
 
 @app.route('/set_default_address/<int:address_id>', methods=['POST'])
@@ -1114,29 +1110,46 @@ def addresses():
 @role_required('buyer')
 def set_default_address(address_id):
     buyer_id = session.get('user_id')
+    
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    # First, set all other addresses to non-default
+    # Check if the new default address exists for the buyer
+    cursor.execute("""
+        SELECT * FROM BuyerAddress
+        WHERE buyer_id = %s AND address_id = %s
+    """, (buyer_id, address_id))
+    address_exists = cursor.fetchone()
+
+    if not address_exists:
+        flash('Address does not exist or is not associated with your account.', 'danger')
+        cursor.close()
+        connection.close()
+        return redirect(url_for('addresses'))
+
+    # Ensure the buyer only has one default address
+    # Step 1: Clear the current default address (if any)
     cursor.execute("""
         UPDATE Buyer
         SET address_id = NULL
         WHERE buyer_id = %s
     """, (buyer_id,))
-
-    # Now, set the new default address
+    
+    # Step 2: Set the new address as the default
     cursor.execute("""
         UPDATE Buyer
         SET address_id = %s
         WHERE buyer_id = %s
     """, (address_id, buyer_id))
 
+    
     connection.commit()
     cursor.close()
     connection.close()
-
+    print('till flash messge')
     flash('Default address updated successfully.', 'success')
     return redirect(url_for('addresses'))
+
 
 @app.route('/edit_address/<int:address_id>', methods=['GET', 'POST'])
 @login_required
@@ -1182,48 +1195,69 @@ def edit_address(address_id):
 
     return render_template('edit_address.html', address=address)
 
+
 @app.route('/delete_address/<int:address_id>', methods=['POST'])
 @login_required
 @role_required('buyer')
 def delete_address(address_id):
+    
     buyer_id = session.get('user_id')
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    # Check if the address to be deleted is the default address
-    cursor.execute("""
-        SELECT address_id
-        FROM Buyer
-        WHERE buyer_id = %s AND address_id = %s
-    """, (buyer_id, address_id))
+    try:
+        # Check if the address to be deleted is the default address
+        cursor.execute("""
+            SELECT address_id
+            FROM Buyer
+            WHERE buyer_id = %s AND address_id = %s
+        """, (buyer_id, address_id))
+        default_address = cursor.fetchone()
 
-    default_address = cursor.fetchone()
+        # Ensure no unread results remain
+        if default_address is not None:
+            flash('You cannot delete your default address. Please set a new default address first.', 'warning')
+            return redirect(url_for('addresses'))
 
-    if default_address:
-        # If the address to be deleted is the default address, prompt the user to set a new default
-        flash('You cannot delete your default address. Please set a new default address first.', 'warning')
+        # Check if the address is linked to other buyers
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM BuyerAddress
+            WHERE address_id = %s
+        """, (address_id,))
+        linked_buyers = cursor.fetchone()[0]
+
+        if linked_buyers > 1:
+            # If the address is linked to other buyers, only unlink it for the current buyer
+            cursor.execute("""
+                DELETE FROM BuyerAddress
+                WHERE buyer_id = %s AND address_id = %s
+            """, (buyer_id, address_id))
+        else:
+            # If the address is not linked to any other buyers, delete it from the Address table
+            cursor.execute("""
+                DELETE FROM BuyerAddress
+                WHERE buyer_id = %s AND address_id = %s
+            """, (buyer_id, address_id))
+            cursor.execute("""
+                DELETE FROM Address
+                WHERE address_id = %s
+            """, (address_id,))
+
+        connection.commit()
+        flash('Address deleted successfully!', 'success')
+
+    except Exception as e:
+        connection.rollback()
+        flash(f"An error occurred: {e}", 'danger')
+
+    finally:
         cursor.close()
         connection.close()
-        return redirect(url_for('addresses'))
 
-    # Remove the link between the buyer and the address in BuyerAddress
-    cursor.execute("""
-        DELETE FROM BuyerAddress
-        WHERE buyer_id = %s AND address_id = %s
-    """, (buyer_id, address_id))
-
-    # Delete the address from the Address table
-    cursor.execute("""
-        DELETE FROM Address
-        WHERE address_id = %s
-    """, (address_id,))
-
-    connection.commit()
-    cursor.close()
-    connection.close()
-
-    flash('Address deleted successfully!', 'success')
     return redirect(url_for('addresses'))
+
+
 
 
 @app.route('/order_summary/<int:order_id>', methods=['GET'])
