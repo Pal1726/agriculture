@@ -48,6 +48,24 @@ def add_header(response):
     response.headers['Expires'] = '0'  # Use '0' for better compatibility than '-1'
     return response
 
+# Utility function to set session timeout
+def set_session_timeout(role):
+    if role == "buyer":
+        timeout = timedelta(hours=100) 
+    elif role == "seller":
+        timeout = timedelta(hours=100) 
+    else:
+        timeout = timedelta(minutes=1)  # Default timeout
+    session['expires_at'] = (datetime.now() + timeout).timestamp()
+
+# Middleware to check session expiry
+@app.before_request
+def check_session_expiry():
+    expires_at = session.get('expires_at')
+    if expires_at and datetime.now().timestamp() > expires_at:
+        session.clear()
+        flash("Session expired! Please log in again.", 'info')
+        return redirect(url_for('index'))
 
 @app.route('/')
 def home():
@@ -59,19 +77,7 @@ def home():
             return redirect(url_for('my_products'))  
     return render_template('index.html') 
 
-# @app.route('/role_selection', methods=['POST'])
-# def role_selection():
-#     role = request.form['role']
-#     if role == 'buyer':
-#         return redirect(url_for('buyer_login'))
-#     elif role == 'seller':
-#         return redirect(url_for('seller_login'))
-
-
-
-
 @app.route('/index')
-
 def index():
     return render_template('index.html')
 
@@ -96,9 +102,11 @@ def buyer_login():
         connection.close()
 
         if user and check_password_hash(user['password'], password):
-            session['user_id'] = user['buyer_id']  
+            
+            session['user_id'] = user['buyer_id']
             session['role'] = 'buyer'
-            # print(session)
+            set_session_timeout('buyer') 
+            
             # flash("Login successful!","success")
             return redirect(url_for('buyer_dashboard'))
         else:
@@ -125,6 +133,7 @@ def seller_login():
         if user and check_password_hash(user['password'], password):
             session['user_id'] = user['seller_id'] 
             session['role'] = 'seller'
+            set_session_timeout('seller') 
             # flash("Login successful!", "success")  
             return redirect(url_for('my_products'))
         else:
