@@ -49,25 +49,40 @@ def add_header(response):
     response.headers['Expires'] = '0'  # Use '0' for better compatibility than '-1'
     return response
 
-# Utility function to set session timeout
+# Utility function to set session timeout based on role
 def set_session_timeout(role):
     if role == "buyer":
-        timeout = timedelta(hours=100) 
+        timeout = timedelta(minutes=30)  # Inactive timeout for buyers
     elif role == "seller":
-        timeout = timedelta(hours=100) 
+        timeout = timedelta(hours=1)  # Inactive timeout for sellers
     else:
-        timeout = timedelta(minutes=1)  # Default timeout
+        timeout = timedelta(minutes=1)  # Default timeout for others
     session['expires_at'] = (datetime.now() + timeout).timestamp()
+    session['last_activity'] = datetime.now().timestamp()  # Record last activity
 
-# Middleware to check session expiry
+# Middleware to check session expiry based on inactivity
 @app.before_request
 def check_session_expiry():
     expires_at = session.get('expires_at')
-    if expires_at and datetime.now().timestamp() > expires_at:
+    last_activity = session.get('last_activity')
+    
+    if not expires_at or not last_activity:
+        # If no expiry or last activity, assume the session is invalid
+        return redirect(url_for('index'))
+    
+    # If session expired
+    if datetime.now().timestamp() > expires_at:
         session.clear()
         flash("Session expired! Please log in again.", 'info')
         return redirect(url_for('index'))
 
+    # Extend session if user was active and within the allowable inactivity period
+    if datetime.now().timestamp() - last_activity < 900:  # 900 seconds = 15 minutes
+        set_session_timeout(session.get('role', 'default'))  # Extend timeout based on role
+    
+    # Always update the last activity timestamp
+    session['last_activity'] = datetime.now().timestamp()
+    
 @app.route('/')
 def home():
     # Check if the user is already logged in
@@ -477,6 +492,9 @@ def delete_product(product_id):
 @login_required
 @role_required('seller')
 def seller_transactions():
+    page = request.args.get('page', 1, type=int)
+    per_page = 10  # Number of orders per page
+    offset = (page - 1) * per_page
     seller_id = session.get('user_id')
     
     if not seller_id:
@@ -486,6 +504,14 @@ def seller_transactions():
     # Connect to the database
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
+
+    cursor.execute("""
+    SELECT COUNT(*) AS total_transaction
+    FROM Transaction
+    WHERE seller_id = %s
+    """, (seller_id,))
+    total_transaction = cursor.fetchone()['total_transaction']  
+    total_pages = ceil(total_transaction / per_page) 
     
     # Query to fetch transactions including payment status
     cursor.execute("""
@@ -514,7 +540,9 @@ def seller_transactions():
             p.seller_id = %s
         ORDER BY 
             t.transaction_date DESC
-    """, (seller_id,))
+
+         LIMIT %s OFFSET %s
+    """, (seller_id, per_page, offset))
 
 
     transactions = cursor.fetchall()
@@ -522,7 +550,7 @@ def seller_transactions():
     cursor.close()
     connection.close()
     
-    return render_template('seller_transaction.html', transactions=transactions)
+    return render_template('seller_transaction.html', transactions=transactions,current_page=page, total_pages=total_pages)
 
 
 
