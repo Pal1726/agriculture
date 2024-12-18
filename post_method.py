@@ -109,8 +109,11 @@ def generate_session_id():
 @app.before_request
 def validate_session():
     user_id = session.get('user_id')
+   
     session_id = session.get('session_id')
+   
     role = session.get('role')
+   
     
     if not user_id or not session_id:
         return  # No active session
@@ -127,6 +130,7 @@ def validate_session():
         return  # Invalid role
     
     db_session_id = cursor.fetchone()
+    
     cursor.close()
     connection.close()
     
@@ -166,7 +170,7 @@ def buyer_login():
             session['user_id'] = user['buyer_id']
             session['role'] = 'buyer'
             session['session_id'] = session_id
-            print()
+            
             set_session_timeout('buyer') 
             
             # flash("Login successful!", "success")
@@ -193,17 +197,36 @@ def seller_login():
         cursor = connection.cursor(dictionary=True)
         cursor.execute("SELECT * FROM Seller WHERE username = %s", (username,))
         user = cursor.fetchone()
-        cursor.close()
-        connection.close()
+       
 
         if user and check_password_hash(user['password'], password):
+            session_id = generate_session_id()
+            
+            
+            # Update the `current_session_id` in the database
+            cursor.execute(
+                "UPDATE Seller SET current_session_id = %s WHERE seller_id = %s",
+                (session_id, user['seller_id'])
+            )
+            connection.commit()
+
+
             session['user_id'] = user['seller_id'] 
             session['role'] = 'seller'
+            session['session_id'] = session_id
+
+           
             set_session_timeout('seller') 
-            # flash("Login successful!", "success")  
+
+            # flash("Login successful!", "success") 
+            cursor.close()
+            connection.close()
+             
             return redirect(url_for('my_products'))
         else:
-            flash("Invalid credentials!", "error")  
+            flash("Invalid credentials!", "error") 
+            cursor.close()
+            connection.close() 
             return redirect(url_for('seller_login'))
     
     return render_template('seller_login.html')
