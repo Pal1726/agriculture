@@ -158,3 +158,16 @@ body.login-page {
     background-color: #2196F3; /* Blue background for info */
     color: white;
 }
+
+.remember-me-wrapper{
+    font-size: 20px;
+    
+  
+}
+
+#remember_me {
+    width: 17px; /* Set the width of the checkbox */
+    height: 17px; /* Set the height of the checkbox */
+}
+
+
