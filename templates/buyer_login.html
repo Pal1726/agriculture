@@ -10,10 +10,10 @@
 <body class="login-page">
     <div class="login-container">
         <h2 class="login-title">Buyer Login</h2>
-        <form action="{{ url_for('buyer_login') }}" method="POST">
+        <form action="{{ url_for('buyer_login') }}" method="POST" >
             <div class="input-wrapper">
                 <span class="input-icon"><i class="fas fa-user"></i></span>
-                <input type="text" id="username" name="username" class="input-field" placeholder="Username" required>
+                <input type="text" id="username" name="username" class="input-field" placeholder="Username"  required>
             </div>
 
             <div class="input-wrapper">
@@ -21,6 +21,13 @@
                 <input type="password" id="password" name="password" class="input-field" placeholder="Password" required>
                 
             </div>
+
+            <div class="remember-me-wrapper">
+                <input type="checkbox" id="remember_me" name="remember_me" >
+                <label for="remember_me" class="remember-me-label">Remember Me</label>
+            </div>
+
+
 
             <input type="submit" value="Sign In" class="submit-btn">
         </form>
