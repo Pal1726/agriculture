@@ -21,6 +21,9 @@ def get_db_connection():
         database="faker"
     )
 
+# Configure session lifetime
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Extended session lifetime for "Remember Me"
+
 
 def login_required(f):
     @wraps(f)
@@ -148,13 +151,12 @@ def buyer_login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        remember_me = 'remember_me' in request.form  # Check if "Remember Me" is selected
         
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
         cursor.execute("SELECT * FROM Buyer WHERE username = %s", (username,))
         user = cursor.fetchone()
-        
-        
         
         if user and check_password_hash(user['password'], password):
             session_id = generate_session_id()
@@ -170,10 +172,9 @@ def buyer_login():
             session['user_id'] = user['buyer_id']
             session['role'] = 'buyer'
             session['session_id'] = session_id
+            session.permanent = remember_me  # Extend session if "Remember Me" is selected
             
             set_session_timeout('buyer') 
-            
-            # flash("Login successful!", "success")
             cursor.close()
             connection.close()
             return redirect(url_for('buyer_dashboard'))
@@ -189,19 +190,19 @@ def buyer_login():
 def seller_login():
     if 'user_id' in session and session.get('role') == 'seller':
         return redirect(url_for('add_product'))
+    
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        remember_me = 'remember_me' in request.form  # Check if "Remember Me" is selected
         
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
         cursor.execute("SELECT * FROM Seller WHERE username = %s", (username,))
         user = cursor.fetchone()
-       
-
+        
         if user and check_password_hash(user['password'], password):
             session_id = generate_session_id()
-            
             
             # Update the `current_session_id` in the database
             cursor.execute(
@@ -209,28 +210,24 @@ def seller_login():
                 (session_id, user['seller_id'])
             )
             connection.commit()
-
-
-            session['user_id'] = user['seller_id'] 
+            
+            # Set session variables
+            session['user_id'] = user['seller_id']
             session['role'] = 'seller'
             session['session_id'] = session_id
-
-           
+            session.permanent = remember_me  # Extend session if "Remember Me" is selected
+            
             set_session_timeout('seller') 
-
-            # flash("Login successful!", "success") 
             cursor.close()
             connection.close()
-             
             return redirect(url_for('my_products'))
         else:
-            flash("Invalid credentials!", "error") 
+            flash("Invalid credentials!", "error")
             cursor.close()
-            connection.close() 
+            connection.close()
             return redirect(url_for('seller_login'))
     
     return render_template('seller_login.html')
-
 
 @app.route('/buyer_signup', methods=['GET', 'POST'])
 def buyer_signup():
