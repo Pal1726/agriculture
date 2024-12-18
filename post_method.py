@@ -1,5 +1,4 @@
 
-
 from flask import Flask, render_template, request, redirect, url_for, flash,session
 import mysql.connector
 import os
@@ -7,6 +6,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from math import ceil
 from functools import wraps
 from datetime import datetime, timedelta
+import uuid
+
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -68,7 +69,7 @@ def check_session_expiry():
     
     if not expires_at or not last_activity:
         # If no expiry or last activity, assume the session is invalid
-        return redirect(url_for('index'))
+        return 
     
     # If session expired
     if datetime.now().timestamp() > expires_at:
@@ -100,6 +101,40 @@ def index():
 @app.route('/services')
 def services():
     return render_template('services.html') 
+
+
+def generate_session_id():
+    return str(uuid.uuid4())
+
+@app.before_request
+def validate_session():
+    user_id = session.get('user_id')
+    session_id = session.get('session_id')
+    role = session.get('role')
+    
+    if not user_id or not session_id:
+        return  # No active session
+    
+    # Check if the session ID matches the one in the database
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    
+    if role == 'buyer':
+        cursor.execute("SELECT current_session_id FROM Buyer WHERE buyer_id = %s", (user_id,))
+    elif role == 'seller':
+        cursor.execute("SELECT current_session_id FROM Seller WHERE seller_id = %s", (user_id,))
+    else:
+        return  # Invalid role
+    
+    db_session_id = cursor.fetchone()
+    cursor.close()
+    connection.close()
+    
+    if not db_session_id or db_session_id['current_session_id'] != session_id:
+        session.clear()
+        flash("You were logged out because your account was accessed from another device/browser.", 'info')
+        return redirect(url_for('index'))
+
     
 @app.route('/buyer_login', methods=['GET', 'POST'])
 def buyer_login():
@@ -114,19 +149,34 @@ def buyer_login():
         cursor = connection.cursor(dictionary=True)
         cursor.execute("SELECT * FROM Buyer WHERE username = %s", (username,))
         user = cursor.fetchone()
-        cursor.close()
-        connection.close()
-
+        
+        
+        
         if user and check_password_hash(user['password'], password):
+            session_id = generate_session_id()
             
+            # Update the `current_session_id` in the database
+            cursor.execute(
+                "UPDATE Buyer SET current_session_id = %s WHERE buyer_id = %s",
+                (session_id, user['buyer_id'])
+            )
+            connection.commit()
+            
+            # Set session variables
             session['user_id'] = user['buyer_id']
             session['role'] = 'buyer'
+            session['session_id'] = session_id
+            print()
             set_session_timeout('buyer') 
             
-            # flash("Login successful!","success")
+            # flash("Login successful!", "success")
+            cursor.close()
+            connection.close()
             return redirect(url_for('buyer_dashboard'))
         else:
-            flash("Invalid credentials!","error")
+            flash("Invalid credentials!", "error")
+            cursor.close()
+            connection.close()
             return redirect(url_for('buyer_login'))
     
     return render_template('buyer_login.html')
@@ -1435,12 +1485,31 @@ def order_confirmation(order_id):
 
 
 @app.route('/logout')
-@login_required
 def logout():
+    user_id = session.get('user_id')
+    role = session.get('role')
+    
+    if role == 'buyer':
+        table = 'Buyer'
+        id_column = 'buyer_id'
+    elif role == 'seller':
+        table = 'Seller'
+        id_column = 'seller_id'
+    else:
+        session.clear()
+        return redirect(url_for('index'))
+    
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    cursor.execute(f"UPDATE {table} SET current_session_id = NULL WHERE {id_column} = %s", (user_id,))
+    connection.commit()
+    cursor.close()
+    connection.close()
+    
     session.clear()
-
-    flash("You have been logged out.",'info')
+    flash("Logged out successfully!", "success")
     return redirect(url_for('index'))
+
 
 if __name__ == '__main__':
     app.run(debug=True) 
