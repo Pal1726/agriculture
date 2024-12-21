@@ -144,3 +144,4 @@ SET total_amount = (
 
 
 
+palak
