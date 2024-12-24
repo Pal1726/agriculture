@@ -141,4 +141,3 @@ SET total_amount = (
 
 
 
-

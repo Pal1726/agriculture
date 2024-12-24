@@ -31,6 +31,7 @@ def get_db_connection():
 
 
 
+
 google_blueprint = make_google_blueprint(
     scope=[
         "https://www.googleapis.com/auth/userinfo.email",
