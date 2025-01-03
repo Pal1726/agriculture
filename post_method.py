@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
+#Loads environment variables from a .env file into os.environ
 load_dotenv()
 
 app = Flask(__name__)
@@ -153,7 +154,7 @@ def check_session_expiry():
     session['last_activity'] = datetime.now().timestamp()
     
 @app.route('/')
-def homee():
+def home():
     # Check if the user is already logged in
     if 'user_id' in session and 'role' in session:
         if session['role'] == 'buyer':
@@ -209,70 +210,12 @@ def validate_session():
 
 
 
-# @app.route("/oauth_callback")
-# def oauth_callback():
-#     if not google.authorized:
-#         flash("Authorization failed. Please try again.", "error")
-#         return redirect(url_for("index"))
 
-#     # Fetch user information from Google
-#     resp = google.get("/oauth2/v2/userinfo")
-#     if not resp.ok:
-#         flash("Failed to fetch user information.", "error")
-#         return redirect(url_for("index"))
-
-#     user_info = resp.json()
-#     email = user_info.get("email")
-
-#     # Database lookup to identify the user as buyer or seller
-#     connection = get_db_connection()
-#     cursor = connection.cursor(dictionary=True)
-
-#     cursor.execute("SELECT * FROM Buyer WHERE email = %s", (email,))
-#     buyer = cursor.fetchone()
-
-#     cursor.execute("SELECT * FROM Seller WHERE email = %s", (email,))
-#     seller = cursor.fetchone()
-
-#     session_id = generate_session_id()
-
-#     if buyer:
-#         # Update buyer session in the database
-#         cursor.execute(
-#             "UPDATE Buyer SET current_session_id = %s WHERE buyer_id = %s",
-#             (session_id, buyer["buyer_id"])
-#         )
-#         session["user_id"] = buyer["buyer_id"]
-#         session["role"] = "buyer"
-#     elif seller:
-#         # Update seller session in the database
-#         cursor.execute(
-#             "UPDATE Seller SET current_session_id = %s WHERE seller_id = %s",
-#             (session_id, seller["seller_id"])
-#         )
-#         session["user_id"] = seller["seller_id"]
-#         session["role"] = "seller"
-#     else:
-#         flash("Account not found. Please sign up.", "error")
-#         return redirect(url_for("index"))
-
-#     connection.commit()
-#     cursor.close()
-#     connection.close()
-
-#     session["session_id"] = session_id
-#     session.permanent = True  # Keep the session active
-
-#     # Redirect based on role
-#     if session["role"] == "buyer":
-#         return redirect(url_for("buyer_dashboard"))
-#     elif session["role"] == "seller":
-#         return redirect(url_for("my_products"))
 
     
 @app.route('/buyer_login', methods=['GET', 'POST'])
 def buyer_login():
-    print("buyer login ke aandar gaya")
+   
     if 'user_id' in session and session.get('role') == 'buyer':
         return redirect(url_for('buyer_dashboard'))
     
@@ -313,7 +256,7 @@ def buyer_login():
             return redirect(url_for('buyer_login'))
 
     google_login_url = url_for('google.login')
-    print("google_login_url",google_login_url)
+    
     return render_template('buyer_login.html', google_login_url=google_login_url)  
     
 
@@ -357,8 +300,10 @@ def seller_login():
             cursor.close()
             connection.close()
             return redirect(url_for('seller_login'))
+
+    google_login_url = url_for('google.login')
     
-    return render_template('seller_login.html')
+    return render_template('seller_login.html',google_login_url=google_login_url)
 
 @app.route('/buyer_signup', methods=['GET', 'POST'])
 def buyer_signup():
