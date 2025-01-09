@@ -44,6 +44,7 @@ google_blueprint = make_google_blueprint(
     redirect_to='oauth_callback'  # Correct endpoint
 )
 
+
 app.register_blueprint(google_blueprint, url_prefix="/login")
 
 
