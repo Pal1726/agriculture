@@ -83,6 +83,7 @@ for category in categories:
 
 connection.commit()
 
+#product
 if get_record_count("Product") < num_records:
     fruits = ['Apple', 'Mango', 'Watermelon', 'Banana', 'Grapes']
     vegetables = ['Brinjal', 'Carrot', 'Potato', 'Spinach', 'Tomato']
