@@ -181,6 +181,7 @@ def validate_session():
     user_id = session.get('user_id')
    
     session_id = session.get('session_id')
+    print("palak",session_id)
    
     role = session.get('role')
    
@@ -200,6 +201,7 @@ def validate_session():
         return  # Invalid role
     
     db_session_id = cursor.fetchone()
+    print(db_session_id)
     
     cursor.close()
     connection.close()
