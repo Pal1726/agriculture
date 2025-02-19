@@ -181,7 +181,7 @@ def validate_session():
     user_id = session.get('user_id')
    
     session_id = session.get('session_id')
-    print("palak",session_id)
+    print("seller_id",session_id)
    
     role = session.get('role')
    
